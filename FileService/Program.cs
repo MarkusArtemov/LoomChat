@@ -1,3 +1,4 @@
+using De.Hsfl.LoomChat.File.Options;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,21 @@ builder.Services.AddSwaggerGen();
 builder.Host.UseSerilog((ctx, lc) =>
 {
     lc.WriteTo.Console();
+});
+
+// Read relative path from appsettings.json
+var storageRelative = builder.Configuration.GetValue<string>("StorageRoot")  ?? "data";
+
+// Build full path
+var storageFullPath = Path.Combine(builder.Environment.ContentRootPath, storageRelative);
+
+// Create directory if not exists
+Directory.CreateDirectory(storageFullPath);
+
+// Register FileStorageOptions to DI
+builder.Services.AddSingleton<FileStorageOptions>(new FileStorageOptions
+{
+    StoragePath = storageFullPath
 });
 
 var app = builder.Build();
