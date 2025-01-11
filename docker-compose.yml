@@ -24,9 +24,9 @@ services:
     depends_on:
       - postgres
     environment:
-      # Set environment to Development
+      # Use Development
       - ASPNETCORE_ENVIRONMENT=Development
-      # Connection string for Auth DB
+      # Override the ConnectionString so Docker uses "postgres" as host
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=authdb;Username=postgres;Password=secret
 
   # Second AuthService instance
