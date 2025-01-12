@@ -1,4 +1,6 @@
 using De.Hsfl.LoomChat.File.Options;
+using De.Hsfl.LoomChat.File.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -29,6 +31,14 @@ Directory.CreateDirectory(storageFullPath);
 builder.Services.AddSingleton<FileStorageOptions>(new FileStorageOptions
 {
     StoragePath = storageFullPath
+});
+
+var connString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Register the database context
+builder.Services.AddDbContext<FileDbContext>(options =>
+{
+    options.UseNpgsql(connString);
 });
 
 var app = builder.Build();

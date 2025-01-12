@@ -1,4 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using Serilog;
+using De.Hsfl.LoomChat.Chat.Persistence;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +16,14 @@ builder.Services.AddSwaggerGen();
 builder.Host.UseSerilog((ctx, lc) =>
 {
     lc.WriteTo.Console();
+});
+
+var connString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Register the database context
+builder.Services.AddDbContext<ChatDbContext>(options =>
+{
+    options.UseNpgsql(connString);
 });
 
 var app = builder.Build();

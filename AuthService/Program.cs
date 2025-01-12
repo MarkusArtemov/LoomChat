@@ -1,4 +1,6 @@
 using Serilog;
+using Microsoft.EntityFrameworkCore;
+using De.Hsfl.LoomChat.Auth.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,9 +17,15 @@ builder.Host.UseSerilog((ctx, lc) =>
     lc.WriteTo.Console();
 });
 
+var connString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Register the database context
+builder.Services.AddDbContext<AuthDbContext>(options =>
+{
+    options.UseNpgsql(connString);
+});
+
 var app = builder.Build();
-
-
 
 
 // Configure the HTTP request pipeline.
