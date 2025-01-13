@@ -1,15 +1,9 @@
 using Serilog;
 using Microsoft.EntityFrameworkCore;
 using De.Hsfl.LoomChat.Auth.Persistence;
+using De.Hsfl.LoomChat.Auth.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
 // Add Serilog
 builder.Host.UseSerilog((ctx, lc) =>
@@ -24,6 +18,18 @@ builder.Services.AddDbContext<AuthDbContext>(options =>
 {
     options.UseNpgsql(connString);
 });
+
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddSingleton<PasswordHasher>();
+builder.Services.AddSingleton<JwtUtils>();
+
+// Add services to the container.
+
+builder.Services.AddControllers();
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 
 var app = builder.Build();
 

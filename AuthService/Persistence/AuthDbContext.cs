@@ -3,6 +3,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace De.Hsfl.LoomChat.Auth.Persistence
 {
+    /// <summary>
+    /// Handles the database connection and sets up the constraints for the User table
+    /// </summary>
     public class AuthDbContext : DbContext
     {
         public AuthDbContext(DbContextOptions<AuthDbContext> options) : base(options)

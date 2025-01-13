@@ -3,6 +3,11 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace De.Hsfl.LoomChat.Auth.Persistence
 {
+
+    /// <summary>
+    /// Creates AuthDbContext instances at design time for EF Core migrations and tooling.
+    /// This class allows EF to generate or update the database schema without running the full application.
+    /// </summary>
     public class AuthDbContextFactory : IDesignTimeDbContextFactory<AuthDbContext>
     {
         public AuthDbContext CreateDbContext(string[] args)

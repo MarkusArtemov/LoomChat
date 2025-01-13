@@ -1,4 +1,22 @@
 @AuthService_HostAddress = http://localhost:5232
 
-###
+### Swagger UI
 GET {{AuthService_HostAddress}}/swagger
+
+### Register Endpoint
+POST {{AuthService_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "user",
+  "password": "password"
+}
+
+### Login Endpoint
+POST {{AuthService_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "user",
+  "password": "password"
+}
