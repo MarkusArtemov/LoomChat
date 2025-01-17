@@ -1,0 +1,103 @@
+version: "3.9"
+
+services:
+  # PostgreSQL database container
+  postgres:
+    image: postgres:15
+    container_name: my_postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # First AuthService instance
+  authservice1:
+    build:
+      context: ./AuthService
+      dockerfile: Dockerfile
+    container_name: authservice1
+    ports:
+      - "5232:8080"
+    depends_on:
+      - postgres
+    environment:
+      # Use Development
+      - ASPNETCORE_ENVIRONMENT=Development
+      # Override the ConnectionString so Docker uses "postgres" as host
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=authdb;Username=postgres;Password=secret
+
+  # Second AuthService instance
+  authservice2:
+    build:
+      context: ./AuthService
+      dockerfile: Dockerfile
+    container_name: authservice2
+    ports:
+      - "5233:8080"
+    depends_on:
+      - postgres
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=authdb;Username=postgres;Password=secret
+
+  # First ChatService instance
+  chatservice1:
+    build:
+      context: ./ChatService
+      dockerfile: Dockerfile
+    container_name: chatservice1
+    ports:
+      - "5115:8080"
+    depends_on:
+      - postgres
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=chatdb;Username=postgres;Password=secret
+
+  # Second ChatService instance
+  chatservice2:
+    build:
+      context: ./ChatService
+      dockerfile: Dockerfile
+    container_name: chatservice2
+    ports:
+      - "5116:8080"
+    depends_on:
+      - postgres
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=chatdb;Username=postgres;Password=secret
+
+  # First FileService instance
+  fileservice1:
+    build:
+      context: ./FileService
+      dockerfile: Dockerfile
+    container_name: fileservice1
+    ports:
+      - "5277:8080"
+    depends_on:
+      - postgres
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=filedb;Username=postgres;Password=secret
+
+  # Second FileService instance
+  fileservice2:
+    build:
+      context: ./FileService
+      dockerfile: Dockerfile
+    container_name: fileservice2
+    ports:
+      - "5278:8080"
+    depends_on:
+      - postgres
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=filedb;Username=postgres;Password=secret
+
+volumes:
+  postgres_data:
