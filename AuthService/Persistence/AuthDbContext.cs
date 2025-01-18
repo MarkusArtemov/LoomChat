@@ -37,8 +37,6 @@ namespace De.Hsfl.LoomChat.Auth.Persistence
                 entity.Property(u => u.CreatedAt)
                     .IsRequired();
             });
-
-            base.OnModelCreating(modelBuilder);
         }
 
     }
