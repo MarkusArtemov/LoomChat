@@ -1,0 +1,42 @@
+﻿<Page x:Class="De.Hsfl.LoomChat.Client.Views.LoginView"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:De.Hsfl.LoomChat.Client.ViewModels"
+      mc:Ignorable="d" 
+      d:DesignHeight="450" d:DesignWidth="800"
+      Title="LoginView">
+    <Page.DataContext>
+        <local:LoginViewModel />
+    </Page.DataContext>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Login" FontSize="24" HorizontalAlignment="Center" Margin="0,10" />
+
+        <StackPanel Grid.Row="1" Margin="20">
+            <StackPanel Margin="200,0,200,0" Width="300">
+                <TextBlock Text="Username" Margin="0,0,0,5" />
+                <TextBox x:Name="UsernameInput" Height="30" Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" />
+
+                <TextBlock Text="Password" Margin="0,10,0,5" />
+                <PasswordBox x:Name="PasswordInput" Height="30" PasswordChanged="PasswordInput_PasswordChanged" />
+            </StackPanel>
+        </StackPanel>
+
+        <Button Content="Login" Grid.Row="2" Width="100" Height="30" HorizontalAlignment="Center" Margin="0,10"
+        Command="{Binding LoginCommand}" CommandParameter="{Binding ElementName=PasswordInput, Path=Password}" />
+        <TextBlock HorizontalAlignment="Center" Margin="0,10">
+            <Run Text="Noch nicht registriert? " />
+            <Hyperlink Command="{Binding NavigateToRegisterCommand}">
+                <Run Text="Hier registrieren" />
+            </Hyperlink>
+        </TextBlock>
+    </Grid>
+</Page>
