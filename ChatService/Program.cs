@@ -1,44 +1,86 @@
+using System;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using De.Hsfl.LoomChat.Chat.Persistence;
-
+using De.Hsfl.LoomChat.Chat.Services;
+using De.Hsfl.LoomChat.Chat.Hubs;
+using De.Hsfl.LoomChat.Chat.Mappings; 
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// Add Serilog
-builder.Host.UseSerilog((ctx, lc) =>
+// Serilog
+builder.Host.UseSerilog((context, loggerConfig) =>
 {
-    lc.WriteTo.Console();
+    loggerConfig.WriteTo.Console();
 });
 
+// EF Core
 var connString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-// Register the database context
 builder.Services.AddDbContext<ChatDbContext>(options =>
 {
     options.UseNpgsql(connString);
 });
 
+// AutoMapper - scans assembly for profiles
+builder.Services.AddAutoMapper(typeof(ChatMappingProfile).Assembly);
+
+// Services
+builder.Services.AddScoped<ChatService>();
+
+// JWT Auth
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var secret = builder.Configuration["Jwt:Secret"]
+            ?? throw new InvalidOperationException("JWT Secret not found in config.");
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+            ValidateIssuer = false,
+            ValidateAudience = false
+        };
+
+        // For SignalR token in query string
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(accessToken))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
+builder.Services.AddSignalR();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Middlewares
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseDeveloperExceptionPage();
 }
 
 app.UseHttpsRedirection();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-
+app.MapHub<ChatHub>("/chatHub");
 app.Run();
