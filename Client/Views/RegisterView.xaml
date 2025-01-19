@@ -1,0 +1,44 @@
+﻿<Page x:Class="De.Hsfl.LoomChat.Client.Views.RegisterView"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:De.Hsfl.LoomChat.Client.ViewModels"
+      mc:Ignorable="d" 
+      d:DesignHeight="450" d:DesignWidth="800"
+      Title="RegisterView">
+    <Page.DataContext>
+        <local:RegisterViewModel />
+    </Page.DataContext>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Register" FontSize="24" HorizontalAlignment="Center" Margin="0,10" />
+
+        <StackPanel Grid.Row="1" Margin="20">
+            <StackPanel Width="300" Margin="200,0,200,0">
+                <TextBlock Text="Username" Margin="0,0,0,5" />
+                <TextBox x:Name="UsernameInput" Width="300" Height="30" />
+
+                <TextBlock Text="Password" Margin="0,10,0,5" />
+                <PasswordBox x:Name="PasswordInput" Width="300" Height="30" />
+
+                <TextBlock Text="Confirm Password" Margin="0,10,0,5" />
+                <PasswordBox x:Name="ConfirmPasswordInput" Width="300" Height="30" />
+            </StackPanel>
+        </StackPanel>
+
+        <Button Content="Register" Grid.Row="2" Width="100" Height="30" HorizontalAlignment="Center" Margin="0,10" />
+        <TextBlock HorizontalAlignment="Center" Margin="0,10">
+            <Run Text="Bereits registriert? " />
+            <Hyperlink Command="{Binding NavigateToLoginCommand}">
+                <Run Text="Hier einloggen" />
+            </Hyperlink>
+        </TextBlock>
+    </Grid>
+</Page>
