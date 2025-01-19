@@ -1,0 +1,9 @@
+﻿<Window x:Class="De.Hsfl.LoomChat.Client.Views.MainView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LoomChat Client" Height="450" Width="800">
+    <Grid>
+        <TextBlock Text="Willkommen zur Hauptansicht!" 
+                   HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24" />
+    </Grid>
+</Window>
