@@ -38,6 +38,7 @@
                 <PasswordBox x:Name="ConfirmPasswordInput"
                              Width="300" Height="30" />
             </StackPanel>
+            <TextBlock x:Name="ErrorMessageText" Foreground="Red" VerticalAlignment="Top" Text="{Binding ErrorMessage}" />
         </StackPanel>
 
         <Button Command="{Binding RegisterCommand}"

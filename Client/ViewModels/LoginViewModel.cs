@@ -6,20 +6,35 @@ using System.Net.Http;
 using De.Hsfl.LoomChat.Client.Commands;
 using De.Hsfl.LoomChat.Client.Views;
 using Newtonsoft.Json;
-using De.Hsfl.LoomChat.Client.Models;
+using De.Hsfl.LoomChat.Client.Services;
+using De.Hsfl.LoomChat.Common.Dtos;
 
 namespace De.Hsfl.LoomChat.Client.ViewModels
 {
     public class LoginViewModel : BaseViewModel
     {
         private string _username;
+        private string _password;
+        private string _errorMessage;
+        private LoginService _loginService;
+
+
+        public string ErrorMessage
+        {
+            get { return _errorMessage; }
+            set
+            {
+                _errorMessage = value;
+                OnPropertyChanged(nameof(ErrorMessage));
+            }
+        }
+
         public string Username
         {
             get => _username;
             set => SetProperty(ref _username, value);
         }
 
-        private string _password;
         public string Password
         {
             get => _password;
@@ -32,6 +47,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         public LoginViewModel()
         {
             LoginCommand = new RelayCommand(ExecuteLogin);
+            _loginService = new LoginService();
             NavigateToRegisterCommand = new RelayCommand(_ =>
             {
                 MainWindow.NavigationService.Navigate(new RegisterView());
@@ -41,29 +57,14 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         private async void ExecuteLogin(object parameter)
         {
             var loginData = new LoginRequest(Username, Password);
-
-            using (var client = new HttpClient())
+            var result = await _loginService.Login(loginData);
+            if (result)
             {
-                try
-                {
-                    var url = "http://localhost:5232/Auth/login";
-                    var jsonContent = new StringContent(JsonConvert.SerializeObject(loginData), Encoding.UTF8, "application/json");
-                    var response = await client.PostAsync(url, jsonContent);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var responseBody = await response.Content.ReadAsStringAsync();
-                        MessageBox.Show("Login erfolgreich!");
-                        MainWindow.NavigationService.Navigate(new MainView());
-                    }
-                    else
-                    {
-                        MessageBox.Show($"Login fehlgeschlagen. Statuscode: {response.StatusCode}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Fehler beim Login: {ex.Message}");
-                }
+                MainWindow.NavigationService.Navigate(new MainView());
+            }
+            else
+            {
+                ErrorMessage = "Fehler beim Einloggen!";
             }
         }
     }
