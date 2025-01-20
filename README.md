@@ -10,10 +10,17 @@
 ## Schnellstart (Docker)
 
 1. Repository klonen und ins Verzeichnis wechseln
-2. `docker-compose up -d` (startet alle Services + PostgreSQL)
+2. **Gesamte Umgebung** (alle Services + PostgreSQL) starten:
+ ```bash
+   docker compose --profile allservices up -d
+   ```
 
 ## Lokale Entwicklung
 
-- `docker-compose up -d postgres` (nur DB)
+- **Nur die Datenbank (und pgAdmin) starten** (wenn du die Services lokal in Visual Studio laufen lassen willst):
+```bash
+ docker compose up -d
+```
+
 - Wähle im jeweiligen Projekt (AuthService, ChatService, FileService) ein http-Profil
 - Benötigte Services in Visual Studio starten
