@@ -7,9 +7,11 @@
       mc:Ignorable="d" 
       d:DesignHeight="450" d:DesignWidth="800"
       Title="RegisterView">
+
     <Page.DataContext>
         <local:RegisterViewModel />
     </Page.DataContext>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -23,18 +25,29 @@
         <StackPanel Grid.Row="1" Margin="20">
             <StackPanel Width="300" Margin="200,0,200,0">
                 <TextBlock Text="Username" Margin="0,0,0,5" />
-                <TextBox x:Name="UsernameInput" Width="300" Height="30" />
+                <TextBox x:Name="UsernameInput"
+                         Text="{Binding Username, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Width="300" Height="30" />
 
                 <TextBlock Text="Password" Margin="0,10,0,5" />
-                <PasswordBox x:Name="PasswordInput" Width="300" Height="30" />
+                <PasswordBox x:Name="PasswordInput"
+                             Width="300" Height="30"
+                             PasswordChanged="PasswordInput_PasswordChanged" />
 
                 <TextBlock Text="Confirm Password" Margin="0,10,0,5" />
-                <PasswordBox x:Name="ConfirmPasswordInput" Width="300" Height="30" />
+                <PasswordBox x:Name="ConfirmPasswordInput"
+                             Width="300" Height="30" />
             </StackPanel>
         </StackPanel>
 
-        <Button Content="Register" Grid.Row="2" Width="100" Height="30" HorizontalAlignment="Center" Margin="0,10" />
-        <TextBlock HorizontalAlignment="Center" Margin="0,10">
+        <Button Command="{Binding RegisterCommand}"
+                CommandParameter="{Binding ElementName=PasswordInput, Path=Password}"
+                Content="Register"
+                Grid.Row="2"
+                Width="100" Height="30"
+                HorizontalAlignment="Center" Margin="0,10" />
+
+        <TextBlock Grid.Row="3" HorizontalAlignment="Center" Margin="0,10">
             <Run Text="Bereits registriert? " />
             <Hyperlink Command="{Binding NavigateToLoginCommand}">
                 <Run Text="Hier einloggen" />

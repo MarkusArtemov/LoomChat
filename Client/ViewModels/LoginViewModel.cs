@@ -1,14 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows;
+using System.Net.Http;
 using De.Hsfl.LoomChat.Client.Commands;
 using De.Hsfl.LoomChat.Client.Views;
-using De.Hsfl.LoomChat.Client.Services;
-using System.Net.Http;
+using Newtonsoft.Json;
+using De.Hsfl.LoomChat.Client.Models;
 
 namespace De.Hsfl.LoomChat.Client.ViewModels
 {
@@ -42,27 +40,24 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 
         private async void ExecuteLogin(object parameter)
         {
-            var loginData = new Dictionary<string, string>
-            {
-                { "Username", Username },
-                { "Password", Password } 
-            };
+            var loginData = new LoginRequest(Username, Password);
 
             using (var client = new HttpClient())
             {
                 try
                 {
                     var url = "http://localhost:5232/Auth/login";
-                    var content = new FormUrlEncodedContent(loginData);
-                    var response = await client.PostAsync(url, content);
+                    var jsonContent = new StringContent(JsonConvert.SerializeObject(loginData), Encoding.UTF8, "application/json");
+                    var response = await client.PostAsync(url, jsonContent);
                     if (response.IsSuccessStatusCode)
                     {
                         var responseBody = await response.Content.ReadAsStringAsync();
                         MessageBox.Show("Login erfolgreich!");
+                        MainWindow.NavigationService.Navigate(new MainView());
                     }
                     else
                     {
-                        MessageBox.Show("Login fehlgeschlagen. Überprüfe die Anmeldedaten.");
+                        MessageBox.Show($"Login fehlgeschlagen. Statuscode: {response.StatusCode}");
                     }
                 }
                 catch (Exception ex)

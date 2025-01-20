@@ -1,8 +1,11 @@
 ﻿using De.Hsfl.LoomChat.Client.Commands;
+using De.Hsfl.LoomChat.Client.Models;
 using De.Hsfl.LoomChat.Client.Views;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -14,10 +17,17 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
     {
 
         private string _username;
+        private string _password;
         public string Username
         {
             get => _username;
             set => SetProperty(ref _username, value);
+        }
+
+        public string Password
+        {
+            get => _password;
+            set => SetProperty(ref _password, value);
         }
 
         public ICommand RegisterCommand { get; }
@@ -32,20 +42,33 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             });
         }
 
-        private void ExecuteRegister(object parameter)
+        private async void ExecuteRegister(object parameter)
         {
-            if (Username == "admin" && (parameter as string) == "password123")
+            var registerData = new RegisterRequest(Username, Password);
+
+            using (var client = new HttpClient())
             {
-                // Login erfolgreich: Navigation zur Hauptansicht
-                var mainView = new MainView();
-                mainView.Show();
-                App.Current.MainWindow.Close(); // Aktuelle View schließen
-                App.Current.MainWindow = mainView;
-            }
-            else
-            {
-                // Login fehlgeschlagen
-                MessageBox.Show("Ungültige Anmeldedaten", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                try
+                {
+                    var url = "http://localhost:5232/Auth/register"; 
+                    var jsonContent = new StringContent(JsonConvert.SerializeObject(registerData), Encoding.UTF8, "application/json");
+                    var response = await client.PostAsync(url, jsonContent);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        MessageBox.Show("Registrierung erfolgreich! Sie können sich jetzt anmelden.", "Erfolg", MessageBoxButton.OK, MessageBoxImage.Information);
+                        MainWindow.NavigationService.Navigate(new LoginView()); // Zur Login-Ansicht navigieren
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Registrierung fehlgeschlagen. Statuscode: {response.StatusCode}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler bei der Registrierung: {ex.Message}", "Fehler", MessageBoxButton.OK, MessageBoxImage.Error);
+                    
+                }
             }
         }
     }

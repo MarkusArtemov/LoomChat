@@ -14,7 +14,7 @@ using Serilog;
 using De.Hsfl.LoomChat.Chat.Persistence;
 using De.Hsfl.LoomChat.Chat.Services;
 using De.Hsfl.LoomChat.Chat.Hubs;
-using De.Hsfl.LoomChat.Chat.Mappings; 
+using De.Hsfl.LoomChat.Chat.Mappings;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,7 +52,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = false
         };
 
-        // For SignalR token in query string
+        // For SignalR token in the query string
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -72,6 +72,13 @@ builder.Services.AddSignalR();
 
 var app = builder.Build();
 
+// Automatically apply EF Core migrations
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+    db.Database.Migrate();
+}
+
 // Middlewares
 if (app.Environment.IsDevelopment())
 {
@@ -82,5 +89,6 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Map SignalR Hub
 app.MapHub<ChatHub>("/chatHub");
 app.Run();
