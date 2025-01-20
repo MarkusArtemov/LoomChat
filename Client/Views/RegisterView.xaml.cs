@@ -1,4 +1,5 @@
-﻿using System;
+﻿using De.Hsfl.LoomChat.Client.ViewModels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -23,6 +24,13 @@ namespace De.Hsfl.LoomChat.Client.Views
         public RegisterView()
         {
             InitializeComponent();
+        }
+
+        private void PasswordInput_PasswordChanged(object sender, RoutedEventArgs e)
+        {
+            // Setze das Passwort aus der PasswordBox in das ViewModel
+            var viewModel = (RegisterViewModel)this.DataContext;
+            viewModel.Password = PasswordInput.Password;
         }
     }
 }

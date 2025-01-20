@@ -12,6 +12,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d # Creates initial databases
 
   # First AuthService instance
   authservice1:
@@ -24,10 +25,9 @@ services:
     depends_on:
       - postgres
     environment:
-      # Use Development
       - ASPNETCORE_ENVIRONMENT=Development
-      # Override the ConnectionString so Docker uses "postgres" as host
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=authdb;Username=postgres;Password=secret
+    profiles: ["allservices"]
 
   # Second AuthService instance
   authservice2:
@@ -42,6 +42,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=authdb;Username=postgres;Password=secret
+    profiles: ["allservices"]
 
   # First ChatService instance
   chatservice1:
@@ -56,6 +57,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=chatdb;Username=postgres;Password=secret
+    profiles: ["allservices"]
 
   # Second ChatService instance
   chatservice2:
@@ -70,6 +72,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=chatdb;Username=postgres;Password=secret
+    profiles: ["allservices"]
 
   # First FileService instance
   fileservice1:
@@ -84,6 +87,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=filedb;Username=postgres;Password=secret
+    profiles: ["allservices"]
 
   # Second FileService instance
   fileservice2:
@@ -98,6 +102,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=filedb;Username=postgres;Password=secret
+    profiles: ["allservices"]
 
   # pgAdmin for PostgreSQL Management
   pgadmin:
@@ -108,9 +113,10 @@ services:
       - PGADMIN_DEFAULT_PASSWORD=admin
       - PGADMIN_CONFIG_SERVER_MODE=False
     ports:
-      - "5050:80" # pgAdmin is accessible on http://localhost:5050
+      - "5050:80" # pgAdmin is accessible at http://localhost:5050
     volumes:
       - pgadmin_data:/var/lib/pgadmin
+      - ./servers.json:/pgadmin4/servers.json:ro
     depends_on:
       - postgres
 

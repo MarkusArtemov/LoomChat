@@ -1,6 +1,6 @@
-﻿using De.Hsfl.LoomChat.Auth.Dtos;
-using De.Hsfl.LoomChat.Auth.Models;
+﻿using De.Hsfl.LoomChat.Auth.Models;
 using De.Hsfl.LoomChat.Auth.Persistence;
+using De.Hsfl.LoomChat.Common.Dtos;
 using Microsoft.EntityFrameworkCore;
 
 namespace De.Hsfl.LoomChat.Auth.Services
@@ -26,10 +26,10 @@ namespace De.Hsfl.LoomChat.Auth.Services
         }
 
         // Registers a new user with the given username and password.
-        public async Task<bool> RegisterAsync(string username, string plainPassword)
+        public async Task<RegisterResponse> RegisterAsync(string username, string plainPassword)
         {
             bool exists = await _authDbContext.Users.AnyAsync(u => u.Username == username);
-            if (exists) return false;
+            if (exists) return null;
 
             var user = new User
             {
@@ -40,7 +40,8 @@ namespace De.Hsfl.LoomChat.Auth.Services
 
             _authDbContext.Users.Add(user);
             await _authDbContext.SaveChangesAsync();
-            return true;
+            var token = _jwtUtils.GenerateToken(user.Id, user.Username);
+            return new RegisterResponse(token, user.Id, user.Username);
         }
 
         // Logs in a user with the given username and password.

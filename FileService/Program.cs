@@ -6,7 +6,6 @@ using Serilog;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -19,12 +18,12 @@ builder.Host.UseSerilog((ctx, lc) =>
 });
 
 // Read relative path from appsettings.json
-var storageRelative = builder.Configuration.GetValue<string>("StorageRoot")  ?? "data";
+var storageRelative = builder.Configuration.GetValue<string>("StorageRoot") ?? "data";
 
 // Build full path
 var storageFullPath = Path.Combine(builder.Environment.ContentRootPath, storageRelative);
 
-// Create directory if not exists
+// Create directory if it doesn't exist
 Directory.CreateDirectory(storageFullPath);
 
 // Register FileStorageOptions to DI
@@ -43,6 +42,13 @@ builder.Services.AddDbContext<FileDbContext>(options =>
 
 var app = builder.Build();
 
+// Apply EF Core migrations automatically
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<FileDbContext>();
+    db.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -51,9 +57,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
-
 app.MapControllers();
-
 app.Run();

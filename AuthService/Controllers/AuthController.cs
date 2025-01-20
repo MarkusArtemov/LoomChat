@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using De.Hsfl.LoomChat.Auth.Services;
-using De.Hsfl.LoomChat.Auth.Dtos;
+using De.Hsfl.LoomChat.Common.Dtos;
 
 namespace De.Hsfl.LoomChat.Auth.Controllers
 {
@@ -23,8 +23,8 @@ namespace De.Hsfl.LoomChat.Auth.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            bool success = await _authService.RegisterAsync(request.Username, request.Password);
-            return success ? Ok("Registered.") : BadRequest("Username already taken.");
+            var response = await _authService.RegisterAsync(request.Username, request.Password);
+            return response == null ? BadRequest("Username already taken.") : Ok(response);
         }
 
         [HttpPost("login")]

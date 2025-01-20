@@ -67,8 +67,6 @@ namespace De.Hsfl.LoomChat.Chat.Persistence
                       .WithMany(c => c.ChatMessages)
                       .HasForeignKey(m => m.ChannelId);
             });
-
-            base.OnModelCreating(modelBuilder);
         }
     }
 }
