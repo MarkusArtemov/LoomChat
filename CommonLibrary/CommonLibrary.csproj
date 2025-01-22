@@ -41,10 +41,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Dtos\LoginRequest.cs" />
-    <Compile Include="Dtos\LoginResponse.cs" />
-    <Compile Include="Dtos\RegisterRequest.cs" />
-    <Compile Include="Dtos\RegisterResponse.cs" />
+    <Compile Include="Dtos\Auth\Requests\LoginRequest.cs" />
+    <Compile Include="Dtos\Auth\Responses\LoginResponse.cs" />
+    <Compile Include="Dtos\Auth\Requests\RegisterRequest.cs" />
+    <Compile Include="Dtos\Auth\Responses\RegisterResponse.cs" />
+    <Compile Include="Dtos\Files\Requests\CreateDocumentRequest.cs" />
+    <Compile Include="Dtos\Files\Responses\DocumentResponse.cs" />
+    <Compile Include="Dtos\Files\Responses\DocumentVersionResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

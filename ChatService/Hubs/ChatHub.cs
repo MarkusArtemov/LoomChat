@@ -4,12 +4,14 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using De.Hsfl.LoomChat.Chat.Services;
 using De.Hsfl.LoomChat.Chat.Dtos.Requests;
+using Microsoft.AspNetCore.Authorization;
 
 namespace De.Hsfl.LoomChat.Chat.Hubs
 {
     /// <summary>
     /// Manages real-time chat actions via SignalR
     /// </summary>
+    [Authorize]
     public class ChatHub : Hub
     {
         private readonly ChatService _chatService;
@@ -91,8 +93,9 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
 
         private int GetUserId()
         {
-            var claim = Context.User?.FindFirst(ClaimTypes.NameIdentifier);
+            var claim = Context.User?.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub);
             return claim != null ? int.Parse(claim.Value) : 0;
         }
+
     }
 }
