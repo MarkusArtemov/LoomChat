@@ -35,7 +35,7 @@
                              Width="300" Height="30"
                              PasswordChanged="PasswordInput_PasswordChanged" />
             </StackPanel>
-            <TextBlock x:Name="ErrorMessageText" Foreground="Red" VerticalAlignment="Top" Text="{Binding ErrorMessage}" />
+            <TextBlock x:Name="ErrorMessageText" Foreground="Red" VerticalAlignment="Top" HorizontalAlignment="Center" Text="{Binding ErrorMessage}" />
         </StackPanel>
 
         <Button Command="{Binding LoginCommand}"
