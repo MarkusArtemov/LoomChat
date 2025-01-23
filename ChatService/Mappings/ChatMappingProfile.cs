@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using De.Hsfl.LoomChat.Chat.Models;
+using De.Hsfl.LoomChat.Common.Models;
 using De.Hsfl.LoomChat.Chat.Dtos.Responses;
 
 namespace De.Hsfl.LoomChat.Chat.Mappings

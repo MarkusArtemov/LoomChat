@@ -1,4 +1,4 @@
-﻿namespace De.Hsfl.LoomChat.Chat.Enums
+﻿namespace De.Hsfl.LoomChat.Common.Enums
 {
     public enum ChannelRole
     {

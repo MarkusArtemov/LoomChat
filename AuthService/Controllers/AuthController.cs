@@ -33,5 +33,12 @@ namespace De.Hsfl.LoomChat.Auth.Controllers
             var response = await _authService.LoginAsync(request.Username, request.Password);
             return response == null ? Unauthorized("Invalid credentials.") : Ok(response);
         }
+
+        [HttpPost("users")]
+        public async Task<IActionResult> GetUsers([FromBody] GetUsersRequest request)
+        {
+            var response = await _authService.GetUsers(request);
+            return response == null ? Unauthorized("Invalid credentials.") : Ok(response);
+        }
     }
 }

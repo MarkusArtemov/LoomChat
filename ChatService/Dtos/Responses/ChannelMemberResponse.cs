@@ -1,4 +1,4 @@
-﻿using De.Hsfl.LoomChat.Chat.Enums;
+﻿using De.Hsfl.LoomChat.Common.Enums;
 
 namespace De.Hsfl.LoomChat.Chat.Dtos.Responses
 {
