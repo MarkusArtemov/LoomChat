@@ -7,6 +7,9 @@ using System.Windows.Input;
 
 namespace De.Hsfl.LoomChat.Client.Views
 {
+    /// <summary>
+    /// Code-behind for MainView
+    /// </summary>
     public partial class MainView : Page
     {
         public MainView()
@@ -16,9 +19,9 @@ namespace De.Hsfl.LoomChat.Client.Views
 
         private async void MainViewLoaded(object sender, RoutedEventArgs e)
         {
-            if (DataContext is MainViewModel viewModel)
+            if (DataContext is MainViewModel vm)
             {
-                viewModel.LoadAsyncData();
+                vm.LoadAsyncData();
             }
         }
 
@@ -26,9 +29,9 @@ namespace De.Hsfl.LoomChat.Client.Views
         {
             if (((ListView)sender).SelectedItem is User selectedUser)
             {
-                if (DataContext is MainViewModel viewModel)
+                if (DataContext is MainViewModel vm)
                 {
-                    viewModel.UserClicked(selectedUser);
+                    vm.UserClicked(selectedUser);
                 }
             }
         }
@@ -37,9 +40,9 @@ namespace De.Hsfl.LoomChat.Client.Views
         {
             if (((ListView)sender).SelectedItem is ChannelDto selectedChannel)
             {
-                if (DataContext is MainViewModel viewModel)
+                if (DataContext is MainViewModel vm)
                 {
-                    viewModel.ChannelClicked(selectedChannel);
+                    vm.ChannelClicked(selectedChannel);
                 }
             }
         }

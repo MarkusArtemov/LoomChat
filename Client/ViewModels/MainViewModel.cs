@@ -1,48 +1,58 @@
-﻿using De.Hsfl.LoomChat.Client.Commands;
-using De.Hsfl.LoomChat.Client.Global;
-using De.Hsfl.LoomChat.Client.Services;
-using De.Hsfl.LoomChat.Common.Dtos;
-using De.Hsfl.LoomChat.Common.Models;
-using System;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-
+using De.Hsfl.LoomChat.Client.Commands;
+using De.Hsfl.LoomChat.Client.Services;
+using De.Hsfl.LoomChat.Common.Dtos;
+using De.Hsfl.LoomChat.Common.Models;
+using De.Hsfl.LoomChat.Client.Global; 
 namespace De.Hsfl.LoomChat.Client.ViewModels
 {
-    public class MainViewModel: BaseViewModel
+    public class MainViewModel : BaseViewModel
     {
-        private ObservableCollection<ChannelDto> _openChats;
-        public ObservableCollection<ChannelDto> OpenChats
+        private readonly ChatService _chatService;
+        private LoginService _loginService;
+
+        public ObservableCollection<ChannelDto> OpenChats { get; set; }
+        public ObservableCollection<ChannelDto> DirectMessages { get; set; }
+        public ObservableCollection<User> Users { get; set; }
+
+        private ChannelDto _selectedChannel;
+        public ChannelDto SelectedChannel
         {
-            get => _openChats;
+            get => _selectedChannel;
             set
             {
-                _openChats = value;
-                OnPropertyChanged(nameof(OpenChats));
+                _selectedChannel = value;
+                ChatVisible = (_selectedChannel != null);
+                OnPropertyChanged();
             }
         }
 
-        private ObservableCollection<ChannelDto> _directMessages;
-        public ObservableCollection<ChannelDto> DirectMessages
+        private bool _chatVisible;
+        public bool ChatVisible
         {
-            get => _directMessages;
+            get => _chatVisible;
             set
             {
-                _directMessages = value;
-                OnPropertyChanged(nameof(DirectMessages));
+                _chatVisible = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(IsChatNotVisible));
             }
         }
 
-        private ObservableCollection<User> _users;
-        public ObservableCollection<User> Users
+        public bool IsChatNotVisible => !ChatVisible;
+
+        private string _newMessage;
+        public string NewMessage
         {
-            get => _users;
+            get => _newMessage;
             set
             {
-                _users = value;
-                OnPropertyChanged(nameof(Users));
+                _newMessage = value;
+                OnPropertyChanged();
             }
         }
 
@@ -53,18 +63,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             set
             {
                 _newChannelName = value;
-                OnPropertyChanged(nameof(NewChannelName));
-            }
-        }
-
-        private string _newMessage = "";
-        public string NewMessage
-        {
-            get => _newMessage;
-            set
-            {
-                _newMessage = value;
-                OnPropertyChanged(nameof(NewMessage));
+                OnPropertyChanged();
             }
         }
 
@@ -74,142 +73,225 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             get => _popupOpen;
             set
             {
-                if (_popupOpen != value)
-                {
-                    _popupOpen = value;
-                    OnPropertyChanged(nameof(PopupOpen));
-                }
+                _popupOpen = value;
+                OnPropertyChanged();
             }
         }
 
-        private ChannelDto _selectedChannel;
+        public ICommand LogoutCommand { get; }
+        public ICommand OpenPopupCommand { get; }
+        public ICommand ClosePopupCommand { get; }
+        public ICommand CreateChannelCommand { get; }
+        public ICommand SendMessageCommand { get; }
 
-        public ChannelDto SelectedChannel
+        public MainViewModel()
         {
-            get => _selectedChannel;
-            set
-            {
-                _selectedChannel = value;
-                ChatVisible = true;
-                OnPropertyChanged(nameof(SelectedChannel));
-            }
-        }
-
-        private bool _chatVisible = false;
-        public bool ChatVisible
-        {
-            get => _chatVisible;
-            set
-            {
-                _chatVisible = value;
-                OnPropertyChanged(nameof(ChatVisible));
-                OnPropertyChanged(nameof(IsChatNotVisible));
-            }
-        }
-
-        public bool IsChatNotVisible => !_chatVisible;
-
-        public ICommand OpenNewChatCommand { get; set; }
-        public ICommand LogoutCommand { get; set; }
-
-        public ICommand CreateChannelCommand { get; set; }
-
-        public ICommand OpenPopupCommand { get; set; }
-
-        public ICommand ClosePopupCommand { get; set; }
-
-        public ICommand SendMessageCommand { get; set; }
-
-        private LoginService _loginService;
-        private ChatService _chatService;
-
-        public MainViewModel() 
-        {
-            _loginService = new LoginService();
+            _loginService = new LoginService(); // Falls du ihn brauchst
             _chatService = new ChatService();
+
+            // Initialisiere Collections
+            OpenChats = new ObservableCollection<ChannelDto>();
+            DirectMessages = new ObservableCollection<ChannelDto>();
+            Users = new ObservableCollection<User>();
+
+            // Commands
             LogoutCommand = new RelayCommand(_ => ExecuteLogout());
-            OpenNewChatCommand = new RelayCommand(_ => ExecuteOpenChat());
+            OpenPopupCommand = new RelayCommand(_ => ExecuteOpenPopup());
+            ClosePopupCommand = new RelayCommand(_ => ExecuteClosePopup());
             CreateChannelCommand = new RelayCommand(_ => ExecuteCreateChannel());
-            OpenPopupCommand = new RelayCommand(_ => OpenPopup());
-            ClosePopupCommand = new RelayCommand(_ => ClosePopup());
-            SendMessageCommand = new RelayCommand(_ => SendMessage());
-        }
-
-        public void OpenPopup()
-        {
-            PopupOpen = true;
-        }
-
-        public void ClosePopup()
-        {
-            PopupOpen = false;
-        }
-
-        public void ExecuteLogout()
-        {
-            _loginService.Logout();
-        }
-
-        public void ExecuteOpenChat()
-        {
-
-        }
-
-        public async void ExecuteCreateChannel()
-        {
-            PopupOpen = false;
-            if(NewChannelName.Length > 3)
-            {
-                ChannelDto dto = await _chatService.CreateNewChannel(new CreateChannelRequest(SessionStore.User.Id, NewChannelName));
-                OpenChats.Add(dto);
-            } else
-            {
-                MessageBox.Show("Der Channelname muss mind. 4 Zeichen lang sein.");
-            }
+            SendMessageCommand = new RelayCommand(_ => ExecuteSendMessage());
         }
 
         public async void LoadAsyncData()
         {
-            if(SessionStore.User != null)
+            // Prüfe, ob User und JWT verfügbar sind
+            if (SessionStore.User == null)
             {
-                OpenChats = new ObservableCollection<ChannelDto>(await _chatService.LoadChannels(new GetChannelsRequest(SessionStore.User.Id)));
-                DirectMessages = new ObservableCollection<ChannelDto>(await _chatService.LoadDirectChannels(new GetDirectChannelsRequest(SessionStore.User.Id)));
-                Users = new ObservableCollection<User>(await _chatService.LoadAllUsers(new GetUsersRequest()));
-            } else
+                MessageBox.Show("Keine Benutzerdaten vorhanden.");
+                return;
+            }
+            string jwtToken = SessionStore.JwtToken;
+            if (string.IsNullOrEmpty(jwtToken))
             {
-                MessageBox.Show($"Kein UserObjekt zum Fetchen der Daten vorhanden.");
+                MessageBox.Show("Kein JWT-Token vorhanden.");
+                return;
+            }
+
+            // 1) SignalR verbinden
+            await _chatService.InitializeSignalRAsync(jwtToken);
+
+            // 2) Events abonnieren
+            _chatService.OnMessageReceived += (channelId, senderUserId, senderName, content, sentAt) =>
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var ch = FindChannel(channelId);
+                    if (ch != null)
+                    {
+                        ch.ChatMessages.Add(new ChatMessageDto
+                        {
+                            ChannelId = channelId,
+                            SenderUserId = senderUserId,
+                            Content = content,
+                            SentAt = sentAt
+                        });
+
+                        // Falls du ein Refresh brauchst:
+                        if (SelectedChannel != null && SelectedChannel.Id == channelId)
+                        {
+                            var tmp = SelectedChannel;
+                            SelectedChannel = null;
+                            SelectedChannel = tmp;
+                        }
+                    }
+                });
+            };
+
+            _chatService.OnChannelHistoryReceived += (channelId, msgList) =>
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    var ch = FindChannel(channelId);
+                    if (ch != null)
+                    {
+                        ch.ChatMessages.Clear();
+                        foreach (var m in msgList)
+                        {
+                            ch.ChatMessages.Add(new ChatMessageDto
+                            {
+                                Id = m.Id,
+                                ChannelId = m.ChannelId,
+                                SenderUserId = m.SenderUserId,
+                                Content = m.Content,
+                                SentAt = m.SentAt
+                            });
+                        }
+
+                        if (SelectedChannel != null && SelectedChannel.Id == channelId)
+                        {
+                            var tmp = SelectedChannel;
+                            SelectedChannel = null;
+                            SelectedChannel = tmp;
+                        }
+                    }
+                });
+            };
+
+            // 3) Channels, DMs, Users per REST laden
+            var channels = await _chatService.LoadChannels(new GetChannelsRequest(SessionStore.User.Id));
+            if (channels != null)
+            {
+                foreach (var c in channels)
+                {
+                    // Falls du ChatMessages-Collection brauchst:
+                    c.ChatMessages = new ObservableCollection<ChatMessageDto>();
+                    OpenChats.Add(c);
+                }
+            }
+
+            var dms = await _chatService.LoadDirectChannels(new GetDirectChannelsRequest(SessionStore.User.Id));
+            if (dms != null)
+            {
+                foreach (var d in dms)
+                {
+                    d.ChatMessages = new ObservableCollection<ChatMessageDto>();
+                    DirectMessages.Add(d);
+                }
+            }
+
+            var allUsers = await _chatService.LoadAllUsers(new GetUsersRequest());
+            if (allUsers != null)
+            {
+                foreach (var u in allUsers)
+                {
+                    Users.Add(u);
+                }
             }
         }
 
-        public async void UserClicked(User user)
+        private ChannelDto FindChannel(int channelId)
         {
-            ChannelDto chan = await _chatService.OpenChatWithUser(new OpenChatWithUserRequest(SessionStore.User.Id, user.Id));
-            if (chan != null)
-            {
-                var existingChannel = DirectMessages.FirstOrDefault(c => c.Id == chan.Id);
+            var c = OpenChats.FirstOrDefault(x => x.Id == channelId)
+                ?? DirectMessages.FirstOrDefault(x => x.Id == channelId);
+            return c;
+        }
 
-                if (existingChannel != null)
-                {
-                    DirectMessages.Remove(existingChannel);
-                    DirectMessages.Insert(0, existingChannel);
-                }
-                else
-                {
-                    DirectMessages.Insert(0, chan);
-                }
+        private void ExecuteLogout()
+        {
+            // Beispiel: LogoutService
+            _loginService.Logout();
+        }
+
+        private void ExecuteOpenPopup()
+        {
+            PopupOpen = true;
+        }
+
+        private void ExecuteClosePopup()
+        {
+            PopupOpen = false;
+        }
+
+        private async void ExecuteCreateChannel()
+        {
+            PopupOpen = false;
+            if (string.IsNullOrWhiteSpace(NewChannelName) || NewChannelName.Length < 4)
+            {
+                MessageBox.Show("Der Channelname muss mind. 4 Zeichen lang sein.");
+                return;
             }
+
+            var req = new CreateChannelRequest(SessionStore.User.Id, NewChannelName);
+            var dto = await _chatService.CreateNewChannel(req);
+            if (dto != null)
+            {
+                dto.ChatMessages = new ObservableCollection<ChatMessageDto>();
+                OpenChats.Add(dto);
+                ChannelClicked(dto);
+            }
+        }
+
+        private async void ExecuteSendMessage()
+        {
+            if (SelectedChannel == null || string.IsNullOrWhiteSpace(NewMessage))
+                return;
+
+            // Hier holen wir die User-ID aus dem SessionStore
+            int userId = SessionStore.User.Id;
+            await _chatService.SendMessageSignalR(SelectedChannel.Id, userId, NewMessage);
+            NewMessage = "";
         }
 
         public async void ChannelClicked(ChannelDto channel)
         {
             SelectedChannel = channel;
+            if (channel != null)
+            {
+                await _chatService.JoinChannel(channel.Id);
+            }
         }
 
-        public async void SendMessage()
+        public async void UserClicked(User user)
         {
-            ChannelDto response = await _chatService.SendMessage(new SendMessageRequest(SessionStore.User.Id, NewMessage, SelectedChannel.Id));
-            NewMessage = "";
-            SelectedChannel = response;
+            if (user == null) return;
+
+            var chan = await _chatService.OpenChatWithUser(new OpenChatWithUserRequest(SessionStore.User.Id, user.Id));
+            if (chan != null)
+            {
+                // Prüfen, ob dieser DM-Channel bereits existiert
+                var existing = DirectMessages.FirstOrDefault(c => c.Id == chan.Id);
+                if (existing == null)
+                {
+                    chan.ChatMessages = new ObservableCollection<ChatMessageDto>();
+                    DirectMessages.Insert(0, chan);
+                }
+                else
+                {
+                    DirectMessages.Remove(existing);
+                    DirectMessages.Insert(0, existing);
+                }
+                ChannelClicked(chan);
+            }
         }
     }
 }

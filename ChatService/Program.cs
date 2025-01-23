@@ -18,10 +18,13 @@ using De.Hsfl.LoomChat.Chat.Mappings;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Serilog
+// Serilog konfigurieren
 builder.Host.UseSerilog((context, loggerConfig) =>
 {
-    loggerConfig.WriteTo.Console();
+    // Mindest-Level, hier z.B. Debug oder Info, je nach Bedarf
+    loggerConfig
+        .MinimumLevel.Debug()
+        .WriteTo.Console();
 });
 
 // EF Core
@@ -52,7 +55,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = false
         };
 
-        // For SignalR token in the query string
+        // SignalR-Token auch aus QueryString akzeptieren
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -66,6 +69,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
+
+// REST + SignalR
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
@@ -74,13 +79,12 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Automatically apply EF Core migrations
+// Automatisch Migrationen ausführen
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
     db.Database.Migrate();
 }
-
 
 // Middlewares
 if (app.Environment.IsDevelopment())
@@ -97,4 +101,5 @@ app.MapControllers();
 
 // Map SignalR Hub
 app.MapHub<ChatHub>("/chatHub");
+
 app.Run();

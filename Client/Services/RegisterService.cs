@@ -21,16 +21,26 @@ namespace De.Hsfl.LoomChat.Client.Services
                 try
                 {
                     var url = "http://localhost:5232/Auth/register";
-                    var jsonContent = new StringContent(JsonConvert.SerializeObject(request), Encoding.UTF8, "application/json");
+                    var jsonContent = new StringContent(
+                        JsonConvert.SerializeObject(request),
+                        Encoding.UTF8,
+                        "application/json"
+                    );
                     var response = await client.PostAsync(url, jsonContent);
                     if (response.IsSuccessStatusCode)
                     {
                         var responseBody = await response.Content.ReadAsStringAsync();
                         var responseObj = JsonConvert.DeserializeObject<RegisterResponse>(responseBody);
+
+                        // User in SessionStore
                         SessionStore.User = new Common.Models.User(responseObj.UserID, responseObj.Username)
                         {
                             Token = responseObj.Token
                         };
+
+                        // Token zusätzlich in SessionStore.JwtToken schreiben
+                        SessionStore.JwtToken = responseObj.Token;
+
                         return true;
                     }
                     else
@@ -45,5 +55,6 @@ namespace De.Hsfl.LoomChat.Client.Services
                 }
             }
         }
+
     }
 }
