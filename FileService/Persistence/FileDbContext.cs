@@ -37,7 +37,11 @@ namespace De.Hsfl.LoomChat.File.Persistence
 
                 entity.Property(d => d.ChannelId).IsRequired();
 
-                // 1:N Document has many DocumentVersions
+                // new: file type
+                entity.Property(d => d.FileType)
+                      .IsRequired()
+                      .HasMaxLength(200);
+
                 entity.HasMany(d => d.DocumentVersions)
                       .WithOne(v => v.Document)
                       .HasForeignKey(v => v.DocumentId);
@@ -60,12 +64,19 @@ namespace De.Hsfl.LoomChat.File.Persistence
                 entity.Property(v => v.CreatedAt)
                       .IsRequired();
 
+                // new: is it a full copy or a delta?
+                entity.Property(v => v.IsFull)
+                      .IsRequired();
+
+                // new: which version does the delta base on?
+                entity.Property(v => v.BaseVersionId)
+                      .IsRequired(false);
+
                 entity.HasOne(v => v.Document)
                        .WithMany(d => d.DocumentVersions)
                        .HasForeignKey(v => v.DocumentId);
-
             });
-            base.OnModelCreating(modelBuilder);
         }
+
     }
 }

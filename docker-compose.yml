@@ -87,6 +87,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=filedb;Username=postgres;Password=secret
+    volumes:
+      - ./data:/app/data
     profiles: ["allservices"]
 
   # Second FileService instance
@@ -102,6 +104,8 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=filedb;Username=postgres;Password=secret
+    volumes:
+      - ./data:/app/data
     profiles: ["allservices"]
 
   # pgAdmin for PostgreSQL Management

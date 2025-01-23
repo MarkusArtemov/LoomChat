@@ -1,55 +1,68 @@
-using De.Hsfl.LoomChat.File.Options;
+using System.Text;
 using De.Hsfl.LoomChat.File.Persistence;
+using De.Hsfl.LoomChat.File.Options;
+using De.Hsfl.LoomChat.File.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Controllers + Swagger
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add Serilog
+// Serilog
 builder.Host.UseSerilog((ctx, lc) =>
 {
     lc.WriteTo.Console();
 });
 
-// Read relative path from appsettings.json
+// JWT Auth
+var secret = builder.Configuration["Jwt:Secret"];
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
+            ValidateIssuer = false,
+            ValidateAudience = false
+        };
+    });
+
+// File storage
 var storageRelative = builder.Configuration.GetValue<string>("StorageRoot") ?? "data";
-
-// Build full path
 var storageFullPath = Path.Combine(builder.Environment.ContentRootPath, storageRelative);
-
-// Create directory if it doesn't exist
 Directory.CreateDirectory(storageFullPath);
 
-// Register FileStorageOptions to DI
 builder.Services.AddSingleton<FileStorageOptions>(new FileStorageOptions
 {
     StoragePath = storageFullPath
 });
 
+// DB context
 var connString = builder.Configuration.GetConnectionString("DefaultConnection");
-
-// Register the database context
 builder.Services.AddDbContext<FileDbContext>(options =>
 {
     options.UseNpgsql(connString);
 });
 
+// FileService
+builder.Services.AddScoped<FileService>();
+
 var app = builder.Build();
 
-// Apply EF Core migrations automatically
+// Migrations
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FileDbContext>();
     db.Database.Migrate();
 }
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -57,6 +70,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Use authentication/authorization
+app.UseAuthentication();
 app.UseAuthorization();
+
 app.MapControllers();
 app.Run();
