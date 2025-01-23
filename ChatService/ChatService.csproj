@@ -26,7 +26,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Enums\" />
     <Folder Include="Models\" />
+    <Folder Include="Controllers\" />
     <Folder Include="Persistence\" />
   </ItemGroup>
 

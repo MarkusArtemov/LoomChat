@@ -1,4 +1,4 @@
-﻿using De.Hsfl.LoomChat.Auth.Models;
+﻿using De.Hsfl.LoomChat.Common.Models;
 using De.Hsfl.LoomChat.Auth.Persistence;
 using De.Hsfl.LoomChat.Common.Dtos;
 using Microsoft.EntityFrameworkCore;
@@ -56,6 +56,12 @@ namespace De.Hsfl.LoomChat.Auth.Services
 
             var token = _jwtUtils.GenerateToken(user.Id, user.Username);
             return new LoginResponse(token, user.Id, user.Username);
+        }
+
+        public async Task<GetUsersResponse> GetUsers(GetUsersRequest request)
+        {
+            var users = await _authDbContext.Users.ToListAsync();
+            return new GetUsersResponse(users);
         }
     }
 }

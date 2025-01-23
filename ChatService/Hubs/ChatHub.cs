@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using De.Hsfl.LoomChat.Chat.Services;
 using De.Hsfl.LoomChat.Chat.Dtos.Requests;
+using De.Hsfl.LoomChat.Common.Dtos;
 
 namespace De.Hsfl.LoomChat.Chat.Hubs
 {
@@ -24,10 +25,9 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
         /// </summary>
         public async Task CreateChannel(CreateChannelRequest request)
         {
-            int userId = GetUserId();
-            var channelResponse = await _chatService.CreateChannelAsync(request.Name, userId);
+            var channelResponse = await _chatService.CreateChannelAsync(request);
 
-            await Clients.Caller.SendAsync("ChannelCreated", channelResponse.Id, channelResponse.Name);
+            //await Clients.Caller.SendAsync("ChannelCreated", channelResponse.Id, channelResponse.Name);
         }
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
             var msgResponse = await _chatService.SendMessageAsync(
                 request.ChannelId,
                 userId,
-                request.Content
+                request.Message
             );
 
             await Clients.Group(request.ChannelId.ToString())

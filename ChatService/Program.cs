@@ -66,9 +66,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             }
         };
     });
-
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
@@ -79,15 +81,19 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
+
 // Middlewares
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapControllers();
 
 // Map SignalR Hub
 app.MapHub<ChatHub>("/chatHub");

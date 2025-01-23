@@ -1,4 +1,4 @@
-﻿using De.Hsfl.LoomChat.Auth.Models;
+﻿using De.Hsfl.LoomChat.Common.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace De.Hsfl.LoomChat.Auth.Persistence

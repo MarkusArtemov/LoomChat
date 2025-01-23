@@ -27,7 +27,10 @@ namespace De.Hsfl.LoomChat.Client.Services
                     {
                         var responseBody = await response.Content.ReadAsStringAsync();
                         var responseObj = JsonConvert.DeserializeObject<LoginResponse>(responseBody);
-                        SessionStore.JwtToken = responseObj.Token;
+                        SessionStore.User = new Common.Models.User(responseObj.UserID, responseObj.Username)
+                        {
+                            Token = responseObj.Token
+                        };
                         return true;
                     }
                     else
@@ -43,5 +46,9 @@ namespace De.Hsfl.LoomChat.Client.Services
             }
         }
 
+        public async Task<bool> Logout()
+        {
+            return true;
+        }
     }
 }
