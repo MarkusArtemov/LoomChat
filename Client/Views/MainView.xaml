@@ -4,66 +4,103 @@
       xmlns:local="clr-namespace:De.Hsfl.LoomChat.Client.ViewModels"
       xmlns:converter="clr-namespace:De.Hsfl.LoomChat.Client.Converter"
       Title="MainView"
-      Loaded="MainViewLoaded"
-      Height="1000"
-      Width="1500">
+      Loaded="MainViewLoaded">
+
     <Page.DataContext>
         <local:MainViewModel />
     </Page.DataContext>
+
     <Page.Resources>
         <converter:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
     </Page.Resources>
+
     <Grid>
-        
-        
-        <!-- Hauptlayout: Kopfzeile, Seitenleiste und Hauptbereich -->
+        <!-- Hauptlayout mit 2 Zeilen + 2 Spalten:
+             Oben Kopfzeile (15*), unten Hauptbereich (85*).
+             Links Seitenleiste (20*), rechts Chat (80*). -->
         <Grid.RowDefinitions>
-            <RowDefinition Height="15*" />
-            <!-- Kopfzeile (15% der Höhe) -->
-            <RowDefinition Height="85*" />
-            <!-- Hauptinhalt (85% der Höhe) -->
+            <RowDefinition Height="15*"/>
+            <RowDefinition Height="85*"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="20*" />
-            <!-- Seitenleiste (20% der Breite) -->
-            <ColumnDefinition Width="80*" />
-            <!-- Hauptbereich (80% der Breite) -->
+            <ColumnDefinition Width="20*"/>
+            <ColumnDefinition Width="80*"/>
         </Grid.ColumnDefinitions>
-        <Popup x:Name="CreateChannelPopup" Placement="Center" IsOpen="{Binding PopupOpen}" StaysOpen="False">
+
+        <!-- Popup zum Erstellen eines Channels -->
+        <Popup x:Name="CreateChannelPopup"
+               Placement="Center"
+               IsOpen="{Binding PopupOpen}"
+               StaysOpen="False">
             <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="20" Width="300">
                 <StackPanel>
-                    <TextBlock Text="Neuen Channel erstellen" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <TextBlock Text="Neuen Channel erstellen"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Margin="0,0,0,10"/>
                     <TextBox Text="{Binding NewChannelName}" Width="300" Margin="0,0,0,10"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="Abbrechen" Command="{Binding ClosePopupCommand}" Width="80" Margin="5"/>
-                        <Button Content="Erstellen" Command="{Binding CreateChannelCommand}" Width="80" Margin="5"/>
+                        <Button Content="Abbrechen"
+                                Command="{Binding ClosePopupCommand}"
+                                Width="80"
+                                Margin="5"/>
+                        <Button Content="Erstellen"
+                                Command="{Binding CreateChannelCommand}"
+                                Width="80"
+                                Margin="5"/>
                     </StackPanel>
                 </StackPanel>
             </Border>
         </Popup>
-        <!-- Kopfzeile -->
-        <Border Padding="10" Grid.Row="0" Grid.ColumnSpan="2" Background="#E8E8E8">
+
+        <!-- Kopfzeile (Row=0, ColSpan=2) -->
+        <Border Grid.Row="0"
+                Grid.ColumnSpan="2"
+                Padding="10"
+                Background="#E8E8E8">
             <Grid>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <!-- Titel -->
-                    <ColumnDefinition Width="Auto" />
-                    <!-- Benutzerinfo & Logout -->
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="LoomChat" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" />
+
+                <TextBlock Text="LoomChat"
+                           FontSize="24"
+                           FontWeight="Bold"
+                           VerticalAlignment="Center"/>
+
                 <StackPanel Orientation="Horizontal" Grid.Column="1" VerticalAlignment="Center">
-                    <Button Content="Logout" Command="{Binding LogoutCommand}" Width="100" Height="30" />
+                    <Button Content="Logout"
+                            Command="{Binding LogoutCommand}"
+                            Width="100"
+                            Height="30"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Seitenleiste -->
-        <Border Grid.Row="1" Grid.Column="0" Background="#F4F4F4" Padding="10">
-            <StackPanel>
-                <!-- Direktnachrichten -->
-                <GroupBox Header="Direktnachrichten" Margin="0,0,0,10">
-                    <ListView ItemsSource="{Binding DirectMessages}" 
-                              Height="200" 
+        <!-- Seitenleiste (Row=1, Col=0) -->
+        <Border Grid.Row="1"
+                Grid.Column="0"
+                Background="#F4F4F4"
+                Padding="10">
+            <!-- 
+              Damit es Responsive ist, mit height * arbeiten
+            -->
+            <Grid>
+                <Grid.RowDefinitions>
+                    <!-- Direktnachrichten-Box -->
+                    <RowDefinition Height="*"/>
+                    <!-- "Channel erstellen" Button -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Channels-Box -->
+                    <RowDefinition Height="*"/>
+                    <!-- User-Box -->
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Direktnachrichten (Row=0) -->
+                <GroupBox Grid.Row="0" Header="Direktnachrichten" Margin="0,0,0,10">
+                    <ListView ItemsSource="{Binding DirectMessages}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                               MouseDoubleClick="ChannelListViewMouseDoubleClick">
                         <ListView.ItemTemplate>
@@ -74,11 +111,17 @@
                     </ListView>
                 </GroupBox>
 
-                <!-- Channels -->
-                <Button Content="Channel erstellen" Command="{Binding OpenPopupCommand}" Width="100" Height="30" />
-                <GroupBox Header="Channels" Margin="0,0,0,10">
-                    <ListView ItemsSource="{Binding OpenChats}" 
-                              Height="200" 
+                <!-- "Channel erstellen" Button (Row=1) -->
+                <Button Grid.Row="1"
+                        Content="Channel erstellen"
+                        Command="{Binding OpenPopupCommand}"
+                        Width="100"
+                        Height="30"
+                        Margin="0,0,0,10"/>
+
+                <!-- Channels (Row=2) -->
+                <GroupBox Grid.Row="2" Header="Channels" Margin="0,0,0,10">
+                    <ListView ItemsSource="{Binding OpenChats}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                               MouseDoubleClick="ChannelListViewMouseDoubleClick">
                         <ListView.ItemTemplate>
@@ -89,10 +132,9 @@
                     </ListView>
                 </GroupBox>
 
-                <!-- User -->
-                <GroupBox Header="User">
+                <!-- User (Row=3) -->
+                <GroupBox Grid.Row="3" Header="User">
                     <ListView ItemsSource="{Binding Users}"
-                              Height="200"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                               MouseDoubleClick="UsersListViewMouseDoubleClick">
                         <ListView.ItemTemplate>
@@ -102,59 +144,81 @@
                         </ListView.ItemTemplate>
                     </ListView>
                 </GroupBox>
-            </StackPanel>
+            </Grid>
         </Border>
 
-<!-- Hauptbereich -->
-<Border Grid.Row="1" Grid.Column="1" Padding="10" Background="#F8F8F8">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" /> <!-- Nachrichtenanzeige -->
-            <RowDefinition Height="Auto" /> <!-- Nachrichten-Eingabefeld -->
-        </Grid.RowDefinitions>
+        <!-- Hauptbereich (Row=1, Col=1) -->
+        <Border Grid.Row="1"
+                Grid.Column="1"
+                Padding="10"
+                Background="#F8F8F8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-        <!-- Anzeigen, wenn ein Channel ausgewählt wurde -->
-        <Grid Visibility="{Binding ChatVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-            <!-- Nachrichtenanzeige -->
-            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding SelectedChannel.ChatMessages}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Border BorderThickness="0,0,0,1" BorderBrush="#E0E0E0" Padding="5" Margin="0,5">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding SenderUserId}" 
-                                               FontWeight="Bold" 
-                                               FontSize="12" 
-                                               Foreground="#555" />
-                                    <TextBlock Text="{Binding Content}" FontSize="14" Margin="0,2,0,2" />
-                                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}" 
-                                               FontSize="10" 
-                                               Foreground="#999" 
-                                               HorizontalAlignment="Right" />
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                <!-- Wenn ein Channel ausgewählt -->
+                <Grid Visibility="{Binding ChatVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                      Grid.RowSpan="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-            <!-- Nachrichten-Eingabefeld -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,700,0,0">
-                <TextBox Text="{Binding NewMessage}" 
-                         VerticalAlignment="Center" 
-                         Width="500" 
-                         Margin="0,0,10,0" />
-                <Button Content="Senden" Command="{Binding SendMessageCommand}" Width="100" Height="30" />
-            </StackPanel>
-        </Grid>
+                    <!-- Nachrichtenanzeige -->
+                    <ScrollViewer Grid.Row="0"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding SelectedChannel.ChatMessages}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderThickness="0,0,0,1"
+                                            BorderBrush="#E0E0E0"
+                                            Padding="5"
+                                            Margin="0,5">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding SenderUserId}"
+                                                       FontWeight="Bold"
+                                                       FontSize="12"
+                                                       Foreground="#555"/>
+                                            <TextBlock Text="{Binding Content}"
+                                                       FontSize="14"
+                                                       Margin="0,2,0,2"/>
+                                            <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}"
+                                                       FontSize="10"
+                                                       Foreground="#999"
+                                                       HorizontalAlignment="Right"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
 
-        <!-- Platzhalter für keinen ausgewählten Chat -->
-        <TextBlock Grid.Row="0" Text="Bitte wähle einen Chat aus." 
-                   FontSize="16" FontWeight="Bold" 
-                   HorizontalAlignment="Center" 
-                   VerticalAlignment="Center" 
-                   Visibility="{Binding IsChatNotVisible, Converter={StaticResource BoolToVisibilityConverter}}" />
-    </Grid>
-</Border>
+                    <!-- Nachrichten-Eingabefeld -->
+                    <StackPanel Grid.Row="1"
+                                Orientation="Horizontal"
+                                Margin="0,10,0,0">
+                        <TextBox Text="{Binding NewMessage}"
+                                 VerticalAlignment="Center"
+                                 Width="500"
+                                 Margin="0,0,10,0"/>
+                        <Button Content="Senden"
+                                Command="{Binding SendMessageCommand}"
+                                Width="100"
+                                Height="30"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Platzhalter bei keinem ausgewählten Chat -->
+                <TextBlock Grid.Row="0"
+                           Text="Bitte wähle einen Chat aus."
+                           FontSize="16"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Visibility="{Binding IsChatNotVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            </Grid>
+        </Border>
     </Grid>
 </Page>
