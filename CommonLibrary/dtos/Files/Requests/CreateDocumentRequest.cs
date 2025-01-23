@@ -5,17 +5,13 @@
     /// </summary>
     public class CreateDocumentRequest
     {
-        public CreateDocumentRequest(string name, int channelId, int ownerUserId, string description)
+        public CreateDocumentRequest(string name, int channelId)
         {
             Name = name;
             ChannelId = channelId;
-            OwnerUserId = ownerUserId;
-            Description = description;
         }
 
         public string Name { get; }
         public int ChannelId { get; }
-        public int OwnerUserId { get; }
-        public string Description { get; }
     }
 }

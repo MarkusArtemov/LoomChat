@@ -7,13 +7,13 @@ namespace De.Hsfl.LoomChat.Common.Dtos
     /// </summary>
     public class DocumentResponse
     {
-        public DocumentResponse(int id, string name, int ownerUserId, DateTime createdAt, string description, int channelId)
+        public DocumentResponse(int id, string name, int ownerUserId, DateTime createdAt, string fileType, int channelId)
         {
             Id = id;
             Name = name;
             OwnerUserId = ownerUserId;
             CreatedAt = createdAt;
-            Description = description;
+            FileType = fileType;
             ChannelId = channelId;
         }
 
@@ -21,7 +21,7 @@ namespace De.Hsfl.LoomChat.Common.Dtos
         public string Name { get; }
         public int OwnerUserId { get; }
         public DateTime CreatedAt { get; }
-        public string Description { get; }
+        public string FileType { get; }
         public int ChannelId { get; }
     }
 }
