@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using De.Hsfl.LoomChat.Chat.Services;
 using De.Hsfl.LoomChat.Common.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace De.Hsfl.LoomChat.Chat.Controllers
 {
@@ -11,6 +13,7 @@ namespace De.Hsfl.LoomChat.Chat.Controllers
     /// </summary>
     [ApiController]
     [Route("[controller]")]
+    [Authorize]
     public class ChatController : ControllerBase
     {
         private readonly ChatService _chatService;

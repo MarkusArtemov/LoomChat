@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers; 
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -18,6 +19,9 @@ namespace De.Hsfl.LoomChat.Client.Services
     {
         private HubConnection _hubConnection;
 
+        // We'll store the JWT token here once we get it in InitializeSignalRAsync
+        private string _jwtToken;
+
         // Fires when a new message arrives
         public event Action<int, int, string, string, DateTime> OnMessageReceived;
 
@@ -25,13 +29,17 @@ namespace De.Hsfl.LoomChat.Client.Services
         public event Action<int, List<ChatMessageResponse>> OnChannelHistoryReceived;
 
         /// <summary>
-        /// Sets up SignalR connection with JWT
+        /// Sets up SignalR connection with JWT (and also stores it for REST calls).
         /// </summary>
         public async Task InitializeSignalRAsync(string jwtToken)
         {
+            // Save this token for subsequent REST calls
+            _jwtToken = jwtToken;
+
             _hubConnection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:5115/chathub", options =>
+                .WithUrl("http://localhost:5115/chatHub", options =>
                 {
+                    // For SignalR, we put the JWT as "access_token" in the query
                     options.AccessTokenProvider = () => Task.FromResult(jwtToken);
                 })
                 .Build();
@@ -46,7 +54,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             );
 
             // (B) channel history
-            //  -> server sends "ChannelHistory", channelId + List<ChatMessageResponse>
+            //     server sends "ChannelHistory", channelId + List<ChatMessageResponse>
             _hubConnection.On<int, List<ChatMessageResponse>>(
                 "ChannelHistory",
                 (channelId, msgList) =>
@@ -56,6 +64,21 @@ namespace De.Hsfl.LoomChat.Client.Services
             );
 
             await _hubConnection.StartAsync();
+        }
+
+        /// <summary>
+        /// Helper method: creates an HttpClient that sets the Authorization header if we have a JWT.
+        /// </summary>
+        private HttpClient CreateHttpClientWithAuth()
+        {
+            var client = new HttpClient();
+            if (!string.IsNullOrWhiteSpace(_jwtToken))
+            {
+                // Standard Bearer header
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", _jwtToken);
+            }
+            return client;
         }
 
         /// <summary>
@@ -101,11 +124,11 @@ namespace De.Hsfl.LoomChat.Client.Services
             }
         }
 
-        // ====== REST PART: minimal channels, users ======
+        // ========== REST PART: minimal channels, users ==========
 
         public async Task<List<ChannelDto>> LoadChannels(GetChannelsRequest request)
         {
-            using (var client = new HttpClient())
+            using (var client = CreateHttpClientWithAuth())
             {
                 try
                 {
@@ -132,7 +155,7 @@ namespace De.Hsfl.LoomChat.Client.Services
 
         public async Task<List<ChannelDto>> LoadDirectChannels(GetDirectChannelsRequest request)
         {
-            using (var client = new HttpClient())
+            using (var client = CreateHttpClientWithAuth())
             {
                 try
                 {
@@ -159,8 +182,7 @@ namespace De.Hsfl.LoomChat.Client.Services
 
         public async Task<List<User>> LoadAllUsers(GetUsersRequest request)
         {
-            // Minimal example calling a "Chat/users" endpoint
-            using (var client = new HttpClient())
+            using (var client = CreateHttpClientWithAuth())
             {
                 try
                 {
@@ -187,7 +209,7 @@ namespace De.Hsfl.LoomChat.Client.Services
 
         public async Task<ChannelDto> OpenChatWithUser(OpenChatWithUserRequest request)
         {
-            using (var client = new HttpClient())
+            using (var client = CreateHttpClientWithAuth())
             {
                 try
                 {
@@ -214,7 +236,7 @@ namespace De.Hsfl.LoomChat.Client.Services
 
         public async Task<ChannelDto> CreateNewChannel(CreateChannelRequest request)
         {
-            using (var client = new HttpClient())
+            using (var client = CreateHttpClientWithAuth())
             {
                 try
                 {
