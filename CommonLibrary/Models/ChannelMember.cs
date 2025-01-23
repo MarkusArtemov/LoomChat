@@ -1,6 +1,6 @@
-﻿using De.Hsfl.LoomChat.Chat.Enums;
+﻿using De.Hsfl.LoomChat.Common.Enums;
 
-namespace De.Hsfl.LoomChat.Chat.Models
+namespace De.Hsfl.LoomChat.Common.Models
 {
     public class ChannelMember
     {
@@ -9,6 +9,6 @@ namespace De.Hsfl.LoomChat.Chat.Models
         public bool IsArchived { get; set; }
         public ChannelRole Role { get; set; } = ChannelRole.Member;
 
-        public Channel? Channel { get; set; }
+        public Channel Channel { get; set; }
     }
 }

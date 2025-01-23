@@ -1,9 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using De.Hsfl.LoomChat.Chat.Persistence;
-using De.Hsfl.LoomChat.Chat.Models;
-using De.Hsfl.LoomChat.Chat.Enums;
+using De.Hsfl.LoomChat.Common.Models;
+using De.Hsfl.LoomChat.Common.Enums;
 using AutoMapper;
 using De.Hsfl.LoomChat.Chat.Dtos.Responses;
+using De.Hsfl.LoomChat.Common.Dtos;
+using Newtonsoft.Json;
+using System.Text;
 
 namespace De.Hsfl.LoomChat.Chat.Services
 {
@@ -21,14 +24,64 @@ namespace De.Hsfl.LoomChat.Chat.Services
             _mapper = mapper;
         }
 
+        public async Task<GetChannelsResponse> GetAllChannels(GetChannelsRequest request)
+        {
+            List<Channel> channels = await _chatDbContext.Channels
+                .Include(c => c.ChannelMembers)
+                .Include(c => c.ChatMessages)
+                .Where(c => c.IsDmChannel != true)
+                .ToListAsync();
+
+            var channelsDto = channels.Select(ChannelMapper.ToDto).ToList();
+            return new GetChannelsResponse(channelsDto);
+        }
+
+        public async Task<GetUsersResponse> GetAllUsers(GetUsersRequest request)
+        {
+            using (var client = new HttpClient())
+            {
+                try
+                {
+                    var url = "http://localhost:5232/Auth/users";
+                    var jsonContent = new StringContent(JsonConvert.SerializeObject(request), Encoding.UTF8, "application/json");
+                    var response = await client.PostAsync(url, jsonContent);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseBody = await response.Content.ReadAsStringAsync();
+                        var responseObj = JsonConvert.DeserializeObject<GetUsersResponse>(responseBody);
+                        return responseObj;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    return null;
+                }
+            }
+        }
+
+        public async Task<GetDirectChannelsResponse> GetAllDirectChannels(GetDirectChannelsRequest request)
+        {
+            List<Channel> channels = await _chatDbContext.Channels
+                .Where(c => c.IsDmChannel == true) // Prüft, ob genau 2 Mitglieder im Channel sind
+                .Include(c => c.ChannelMembers)         // Lädt die zugehörigen Mitglieder
+                .Include(c => c.ChatMessages)           // Optional: Lädt die zugehörigen Nachrichten
+                .ToListAsync();
+            var channelsDto = channels.Select(ChannelMapper.ToDto).ToList();
+            return new GetDirectChannelsResponse(channelsDto);
+        }
+
         /// <summary>
         /// Creates a new channel and assigns the creator as owner
         /// </summary>
-        public async Task<ChannelResponse> CreateChannelAsync(string name, int creatorUserId)
+        public async Task<CreateChannelResponse> CreateChannelAsync(CreateChannelRequest request)
         {
             var channel = new Channel
             {
-                Name = name,
+                Name = request.ChannelName,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -38,14 +91,13 @@ namespace De.Hsfl.LoomChat.Chat.Services
             var member = new ChannelMember
             {
                 ChannelId = channel.Id,
-                UserId = creatorUserId,
+                UserId = request.UserId,
                 Role = ChannelRole.Owner
             };
 
             _chatDbContext.ChannelMembers.Add(member);
             await _chatDbContext.SaveChangesAsync();
-
-            return _mapper.Map<ChannelResponse>(channel);
+            return new CreateChannelResponse(ChannelMapper.ToDto(channel));
         }
 
         /// <summary>
@@ -125,6 +177,64 @@ namespace De.Hsfl.LoomChat.Chat.Services
             _chatDbContext.ChannelMembers.Remove(membership);
             await _chatDbContext.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<OpenChatWithUserResponse> OpenChatWithUser(OpenChatWithUserRequest request)
+        {
+            var existingChannel = await _chatDbContext.Channels
+                .Include(c => c.ChannelMembers)
+                .FirstOrDefaultAsync(c =>
+                    c.IsDmChannel &&
+                    c.ChannelMembers.Any(cm => cm.UserId == request.OwnId) &&
+                    c.ChannelMembers.Any(cm => cm.UserId == request.OtherId));
+
+            if (existingChannel != null)
+            {
+                return new OpenChatWithUserResponse(ChannelMapper.ToDto(existingChannel));
+            }
+
+            var newChannel = new Channel
+            {
+                Name = "Direktnachricht",
+                IsDmChannel = true,
+                CreatedAt = DateTime.UtcNow,
+                ChannelMembers = new List<ChannelMember>
+                {
+                    new ChannelMember { UserId = request.OwnId },
+                    new ChannelMember { UserId = request.OtherId }
+                }
+            };
+
+            _chatDbContext.Channels.Add(newChannel);
+            await _chatDbContext.SaveChangesAsync();
+
+            return new OpenChatWithUserResponse(ChannelMapper.ToDto(newChannel));
+        }
+
+        public async Task<SendMessageResponse> SendMessage(SendMessageRequest request)
+        {
+            Channel channel = await _chatDbContext.Channels
+            .Include (c => c.ChannelMembers)
+            .Include(c => c.ChatMessages)
+            .FirstOrDefaultAsync(c => c.Id == request.ChannelId);
+
+            if (channel == null)
+            {
+                throw new Exception("Channel not found.");
+            }
+
+            ChatMessage msg = new ChatMessage
+            {
+                ChannelId = channel.Id,
+                SenderUserId = request.UserId,
+                Content = request.Message,
+                SentAt = DateTime.UtcNow,
+                Channel = channel
+            };
+            channel.ChatMessages.Add(msg);
+            await _chatDbContext.SaveChangesAsync();
+            var channelDto = ChannelMapper.ToDto(channel);
+            return new SendMessageResponse(channelDto);
         }
     }
 }

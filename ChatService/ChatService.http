@@ -1,3 +1,14 @@
 @ChatService_HostAddress = http://localhost:5115
 
 ###
+
+### Swagger UI
+GET {{ChatService_HostAddress}}/swagger
+
+### All Chats from User Endpoint
+POST {{ChatService_HostAddress}}/chats
+Content-Type: application/json
+{
+  "token": "test",
+  "userid": "id"
+}

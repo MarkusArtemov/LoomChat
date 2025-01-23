@@ -1,7 +1,8 @@
 ﻿<Window x:Class="De.Hsfl.LoomChat.Client.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="LoomChat" Height="450" Width="800">
+        xmlns:local="clr-namespace:De.Hsfl.LoomChat.Client.Converter"
+        Title="LoomChat" Height="1000" Width="1500">
     <Grid>
         <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
     </Grid>
