@@ -33,27 +33,6 @@ namespace De.Hsfl.LoomChat.Client.Services
             return client;
         }
 
-        public async Task<List<DocumentResponse>> GetDocumentsByChannelAsync(int channelId)
-        {
-            using (var client = CreateHttpClient())
-            {
-                try
-                {
-                    var url = $"{_baseUrl}/File/channel/{channelId}";
-                    var response = await client.GetAsync(url);
-                    if (!response.IsSuccessStatusCode) return null;
-                    var responseBody = await response.Content.ReadAsStringAsync();
-                    var docs = JsonConvert.DeserializeObject<List<DocumentResponse>>(responseBody);
-                    return docs;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Fehler beim Laden der Dokumente: {ex.Message}");
-                    return null;
-                }
-            }
-        }
-
         public async Task<DocumentResponse> CreateDocumentAsync(CreateDocumentRequest request)
         {
             using (var client = CreateHttpClient())
@@ -80,32 +59,8 @@ namespace De.Hsfl.LoomChat.Client.Services
             }
         }
 
-        public async Task<List<DocumentVersionResponse>> GetVersionsAsync(int documentId)
+        public async Task<DocumentVersionResponse> UploadDocumentVersionAsync(int documentId, string filePath)
         {
-            using (var client = CreateHttpClient())
-            {
-                try
-                {
-                    var url = $"{_baseUrl}/File/{documentId}/versions";
-                    var response = await client.GetAsync(url);
-                    if (!response.IsSuccessStatusCode) return null;
-                    var responseBody = await response.Content.ReadAsStringAsync();
-                    var vers = JsonConvert.DeserializeObject<List<DocumentVersionResponse>>(responseBody);
-                    return vers;
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Fehler beim Laden der Versionen: {ex.Message}");
-                    return null;
-                }
-            }
-        }
-
-        public async Task<DocumentVersionResponse> UploadVersionAsync(int documentId)
-        {
-            var ofd = new OpenFileDialog();
-            if (ofd.ShowDialog() != true) return null;
-            var filePath = ofd.FileName;
             using (var client = CreateHttpClient())
             {
                 try
@@ -142,20 +97,76 @@ namespace De.Hsfl.LoomChat.Client.Services
             }
         }
 
-        public async Task<DocumentResponse> CreateAndUploadDocumentAsync(int channelId)
+        public async Task<DocumentResponse> CreateAndUploadFileForChannel(int channelId)
         {
             var ofd = new OpenFileDialog();
             if (ofd.ShowDialog() != true) return null;
             var filePath = ofd.FileName;
-            var name = System.IO.Path.GetFileNameWithoutExtension(filePath);
-            var createReq = new CreateDocumentRequest(name, channelId);
+            var fileNameNoExt = System.IO.Path.GetFileNameWithoutExtension(filePath);
+
+            var createReq = new CreateDocumentRequest(fileNameNoExt, channelId);
             var doc = await CreateDocumentAsync(createReq);
             if (doc == null) return null;
+
+            var version = await UploadDocumentVersionAsync(doc.Id, filePath);
+            if (version == null) return null;
+
+            return doc;
+        }
+
+        public async Task<List<DocumentResponse>> GetDocumentsByChannelAsync(int channelId)
+        {
             using (var client = CreateHttpClient())
             {
                 try
                 {
-                    var url = $"{_baseUrl}/File/{doc.Id}/upload";
+                    var url = $"{_baseUrl}/File/channel/{channelId}";
+                    var response = await client.GetAsync(url);
+                    if (!response.IsSuccessStatusCode) return null;
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    var docs = JsonConvert.DeserializeObject<List<DocumentResponse>>(responseBody);
+                    return docs;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Laden der Dokumente: {ex.Message}");
+                    return null;
+                }
+            }
+        }
+
+        public async Task<List<DocumentVersionResponse>> GetVersionsAsync(int documentId)
+        {
+            using (var client = CreateHttpClient())
+            {
+                try
+                {
+                    var url = $"{_baseUrl}/File/{documentId}/versions";
+                    var response = await client.GetAsync(url);
+                    if (!response.IsSuccessStatusCode) return null;
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    var vers = JsonConvert.DeserializeObject<List<DocumentVersionResponse>>(responseBody);
+                    return vers;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Laden der Versionen: {ex.Message}");
+                    return null;
+                }
+            }
+        }
+
+        public async Task<DocumentVersionResponse> UploadVersionAsync(int documentId)
+        {
+            var ofd = new OpenFileDialog();
+            if (ofd.ShowDialog() != true) return null;
+            var filePath = ofd.FileName;
+
+            using (var client = CreateHttpClient())
+            {
+                try
+                {
+                    var url = $"{_baseUrl}/File/{documentId}/upload";
                     using (var content = new MultipartFormDataContent())
                     {
                         var fileStream = System.IO.File.OpenRead(filePath);
@@ -174,6 +185,9 @@ namespace De.Hsfl.LoomChat.Client.Services
                             MessageBox.Show("Upload fehlgeschlagen");
                             return null;
                         }
+                        var responseBody = await response.Content.ReadAsStringAsync();
+                        var version = JsonConvert.DeserializeObject<DocumentVersionResponse>(responseBody);
+                        return version;
                     }
                 }
                 catch (Exception ex)
@@ -182,39 +196,41 @@ namespace De.Hsfl.LoomChat.Client.Services
                     return null;
                 }
             }
-            return doc;
         }
+
 
         public async Task<bool> DownloadVersionAsync(int documentId, int versionNumber)
         {
-            var client = CreateHttpClient();
-            try
+            using (var client = CreateHttpClient())
             {
-                var url = $"{_baseUrl}/File/{documentId}/version/{versionNumber}";
-                var response = await client.GetAsync(url);
-                if (!response.IsSuccessStatusCode)
+                try
                 {
-                    MessageBox.Show("Fehler beim Download");
+                    var url = $"{_baseUrl}/File/{documentId}/version/{versionNumber}";
+                    var response = await client.GetAsync(url);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        MessageBox.Show("Fehler beim Download");
+                        return false;
+                    }
+                    var contentDisposition = response.Content.Headers.ContentDisposition;
+                    var fileName = contentDisposition?.FileNameStar ?? "download.bin";
+
+                    var sfd = new SaveFileDialog
+                    {
+                        FileName = fileName
+                    };
+                    if (sfd.ShowDialog() == true)
+                    {
+                        var bytes = await response.Content.ReadAsByteArrayAsync();
+                        System.IO.File.WriteAllBytes(sfd.FileName, bytes);
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Download: {ex.Message}");
                     return false;
                 }
-                var contentType = response.Content.Headers.ContentType?.MediaType;
-                var contentDisposition = response.Content.Headers.ContentDisposition;
-                var fileName = contentDisposition?.FileNameStar ?? "download.bin";
-                var sfd = new SaveFileDialog
-                {
-                    FileName = fileName
-                };
-                if (sfd.ShowDialog() == true)
-                {
-                    var bytes = await response.Content.ReadAsByteArrayAsync();
-                    System.IO.File.WriteAllBytes(sfd.FileName, bytes);
-                }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Fehler beim Download: {ex.Message}");
-                return false;
             }
         }
     }
