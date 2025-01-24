@@ -5,9 +5,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
-using Microsoft.Win32; // Für OpenFileDialog/SaveFileDialog
+using Microsoft.Win32;
 using Newtonsoft.Json;
-using System.Windows;  // Falls du WPF-MessageBox nutzt
+using System.Windows;
 using De.Hsfl.LoomChat.Common.Dtos;
 
 namespace De.Hsfl.LoomChat.Client.Services
@@ -16,11 +16,9 @@ namespace De.Hsfl.LoomChat.Client.Services
     {
         private readonly string _baseUrl;
         private readonly string _jwtToken;
-
-        // Hier die SignalR-Connection zum FileHub
         private HubConnection _hubConnection;
 
-        // Events für Echtzeit-Anbindung
+        // Events für Echtzeit
         public event Action<DocumentResponse> OnDocumentCreated;
         public event Action<DocumentVersionResponse> OnVersionCreated;
 
@@ -30,51 +28,42 @@ namespace De.Hsfl.LoomChat.Client.Services
             _jwtToken = jwtToken;
         }
 
-        // ------------------------------------------------
-        // 1) SIGNALR-Funktionen (FileHub)
-        // ------------------------------------------------
+        // -------------------------------------
+        // 1) SIGNALR: FileHub
+        // -------------------------------------
         public async Task InitializeFileHubAsync()
         {
-            // Beispiel: Hub unter /fileHub
             var hubUrl = $"{_baseUrl}/fileHub";
 
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl(hubUrl, options =>
                 {
-                    // JWT, falls benötigt
                     options.AccessTokenProvider = () => Task.FromResult(_jwtToken);
                 })
                 .Build();
 
-            // Events vom Server empfangen
             _hubConnection.On<DocumentResponse>("DocumentCreated", doc =>
             {
-                // Client teilt es per Event weiter ans ViewModel
                 OnDocumentCreated?.Invoke(doc);
             });
 
             _hubConnection.On<DocumentVersionResponse>("VersionCreated", version =>
             {
-                // Genauso
                 OnVersionCreated?.Invoke(version);
             });
 
             await _hubConnection.StartAsync();
         }
 
-        /// <summary>
-        /// Tritt einer file_channel_{channelId}-Gruppe bei,
-        /// um Dokument-Events in Echtzeit zu empfangen.
-        /// </summary>
         public async Task JoinFileChannel(int channelId)
         {
             if (_hubConnection == null) return;
             await _hubConnection.InvokeAsync("JoinChannel", channelId);
         }
 
-        // ------------------------------------------------
-        // 2) REST-APIs an den FileController
-        // ------------------------------------------------
+        // -------------------------------------
+        // 2) REST-API Calls
+        // -------------------------------------
         private HttpClient CreateHttpClient()
         {
             var client = new HttpClient();
@@ -154,9 +143,6 @@ namespace De.Hsfl.LoomChat.Client.Services
             }
         }
 
-        /// <summary>
-        /// Öffnet ein FileDialog und lädt die Datei als neue Version hoch.
-        /// </summary>
         public async Task<DocumentVersionResponse> UploadDocumentVersionAsync(int documentId)
         {
             var ofd = new OpenFileDialog();
@@ -204,9 +190,6 @@ namespace De.Hsfl.LoomChat.Client.Services
             }
         }
 
-        /// <summary>
-        /// Öffnet FileDialog, erstellt ein neues Document und lädt direkt eine 1. Version hoch.
-        /// </summary>
         public async Task<DocumentResponse> CreateAndUploadFileForChannel(int channelId)
         {
             var ofd = new OpenFileDialog();
@@ -215,12 +198,12 @@ namespace De.Hsfl.LoomChat.Client.Services
             var filePath = ofd.FileName;
             var fileNameNoExt = System.IO.Path.GetFileNameWithoutExtension(filePath);
 
-            // Erst Document anlegen
+            // 1) Document anlegen
             var createReq = new CreateDocumentRequest(fileNameNoExt, channelId);
             var doc = await CreateDocumentAsync(createReq);
             if (doc == null) return null;
 
-            // Dann 1. Version hochladen
+            // 2) Erste Version hochladen
             using (var client = CreateHttpClient())
             {
                 try
@@ -247,7 +230,6 @@ namespace De.Hsfl.LoomChat.Client.Services
                                 return null;
                             }
 
-                            // Wir parsen das Result, brauchen es aber nicht mehr manuell in die Liste einfügen
                             var responseBody = await response.Content.ReadAsStringAsync();
                             var version = JsonConvert.DeserializeObject<DocumentVersionResponse>(responseBody);
                             if (version == null) return null;
@@ -292,6 +274,54 @@ namespace De.Hsfl.LoomChat.Client.Services
                 catch (Exception ex)
                 {
                     MessageBox.Show($"Fehler beim Download: {ex.Message}");
+                    return false;
+                }
+            }
+        }
+
+        // Einzelversion löschen
+        public async Task<bool> DeleteVersionAsync(int documentId, int versionNumber)
+        {
+            using (var client = CreateHttpClient())
+            {
+                try
+                {
+                    var url = $"{_baseUrl}/File/{documentId}/version/{versionNumber}";
+                    var response = await client.DeleteAsync(url);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        MessageBox.Show("Fehler beim Löschen der Version");
+                        return false;
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Löschen der Version: {ex.Message}");
+                    return false;
+                }
+            }
+        }
+
+        // NEU: Komplettes Dokument löschen
+        public async Task<bool> DeleteDocumentAsync(int documentId)
+        {
+            using (var client = CreateHttpClient())
+            {
+                try
+                {
+                    var url = $"{_baseUrl}/File/{documentId}";
+                    var response = await client.DeleteAsync(url);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        MessageBox.Show("Fehler beim Löschen des Dokuments");
+                        return false;
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Löschen des Dokuments: {ex.Message}");
                     return false;
                 }
             }

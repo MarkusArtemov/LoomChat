@@ -3,13 +3,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using De.Hsfl.LoomChat.File.Persistence;
 using De.Hsfl.LoomChat.File.Options;
 using De.Hsfl.LoomChat.File.Models;
-using De.Hsfl.LoomChat.File.Helpers;
-using De.Hsfl.LoomChat.File.Hubs;  // <-- Wichtig
+using De.Hsfl.LoomChat.File.Hubs;
 using De.Hsfl.LoomChat.Common.Dtos;
 
 namespace De.Hsfl.LoomChat.File.Services
@@ -18,7 +17,7 @@ namespace De.Hsfl.LoomChat.File.Services
     {
         private readonly FileDbContext _context;
         private readonly FileStorageOptions _storageOptions;
-        private readonly IHubContext<FileHub> _fileHubContext; // <-- wir binden nur FileHub ein
+        private readonly IHubContext<FileHub> _fileHubContext;
 
         public FileService(
             FileDbContext context,
@@ -44,18 +43,21 @@ namespace De.Hsfl.LoomChat.File.Services
             _context.Documents.Add(doc);
             await _context.SaveChangesAsync();
 
+            var ownerName = "User_" + doc.OwnerUserId; // Demo-Username
             var docResponse = new DocumentResponse(
                 doc.Id,
                 doc.Name,
                 doc.OwnerUserId,
                 doc.CreatedAt,
                 doc.FileType,
-                doc.ChannelId
+                doc.ChannelId,
+                ownerName,
+                doc.FileExtension
             );
 
-            // Hier die Echtzeit-Benachrichtigung an alle Clients,
-            // die sich in Gruppe "file_channel_{doc.ChannelId}" befinden
-            await _fileHubContext.Clients.Group($"file_channel_{doc.ChannelId}")
+            // Echtzeit-Broadcast
+            await _fileHubContext.Clients
+                .Group($"file_channel_{doc.ChannelId}")
                 .SendAsync("DocumentCreated", docResponse);
 
             return docResponse;
@@ -72,82 +74,39 @@ namespace De.Hsfl.LoomChat.File.Services
             var extension = Path.GetExtension(file.FileName);
             if (!doc.DocumentVersions.Any())
             {
+                // setze FileExtension
                 doc.FileExtension = string.IsNullOrWhiteSpace(extension) ? ".bin" : extension;
             }
             else
             {
+                // Falls sie existiert, check ob extension gleich bleibt
                 if (!string.IsNullOrWhiteSpace(extension) && extension != doc.FileExtension)
                     return null;
             }
 
-            var contentType = file.ContentType;
-            if (string.IsNullOrWhiteSpace(contentType))
-            {
-                contentType = "application/octet-stream";
-            }
+            var contentType = file.ContentType ?? "application/octet-stream";
             doc.FileType = contentType;
 
+            // Versionsnummer
             int newVersionNumber = doc.DocumentVersions.Any()
                 ? doc.DocumentVersions.Max(v => v.VersionNumber) + 1
                 : 1;
-
-            bool isFull = (newVersionNumber % 5 == 1);
 
             var docNameSafe = SanitizeFileName(doc.Name);
             var serverFileName = $"{docNameSafe}_v{newVersionNumber}{doc.FileExtension}";
             var fullPath = Path.Combine(_storageOptions.StoragePath, serverFileName);
 
-            DocumentVersion newVersion;
-            if (isFull)
+            // Speichere Datei
+            using var stream = new FileStream(fullPath, FileMode.Create);
+            await file.CopyToAsync(stream);
+
+            var newVersion = new DocumentVersion
             {
-                using var stream = new FileStream(fullPath, FileMode.Create);
-                await file.CopyToAsync(stream);
-
-                newVersion = new DocumentVersion
-                {
-                    DocumentId = doc.Id,
-                    VersionNumber = newVersionNumber,
-                    IsFull = true,
-                    BaseVersionId = null,
-                    StoragePath = fullPath,
-                    CreatedAt = System.DateTime.UtcNow
-                };
-            }
-            else
-            {
-                var prevVersion = doc.DocumentVersions
-                    .OrderByDescending(v => v.VersionNumber)
-                    .FirstOrDefault();
-                if (prevVersion == null) return null;
-
-                var baseFilePath = await ReconstructFileAsync(doc.Id, prevVersion.VersionNumber);
-                if (baseFilePath == null) return null;
-
-                var tempNewFile = Path.Combine(_storageOptions.StoragePath,
-                    $"temp_new_{System.Guid.NewGuid()}{doc.FileExtension}");
-                using (var fs = new FileStream(tempNewFile, FileMode.Create))
-                {
-                    await file.CopyToAsync(fs);
-                }
-
-                // Erzeuge Delta
-                DeltaUtility.CreateDelta(baseFilePath, tempNewFile, fullPath);
-
-                if (System.IO.File.Exists(tempNewFile))
-                {
-                    System.IO.File.Delete(tempNewFile);
-                }
-
-                newVersion = new DocumentVersion
-                {
-                    DocumentId = doc.Id,
-                    VersionNumber = newVersionNumber,
-                    IsFull = false,
-                    BaseVersionId = prevVersion.Id,
-                    StoragePath = fullPath,
-                    CreatedAt = System.DateTime.UtcNow
-                };
-            }
+                DocumentId = doc.Id,
+                VersionNumber = newVersionNumber,
+                StoragePath = fullPath,
+                CreatedAt = System.DateTime.UtcNow
+            };
 
             _context.DocumentVersions.Add(newVersion);
             await _context.SaveChangesAsync();
@@ -161,38 +120,36 @@ namespace De.Hsfl.LoomChat.File.Services
                 doc.FileType
             );
 
-            // Und hier broadcasten wir "VersionCreated"
-            await _fileHubContext.Clients.Group($"file_channel_{doc.ChannelId}")
+            await _fileHubContext.Clients
+                .Group($"file_channel_{doc.ChannelId}")
                 .SendAsync("VersionCreated", versionResponse);
 
             return versionResponse;
         }
 
-        public async Task<FileDownloadResult?> DownloadDocumentVersionAsync(int documentId, int versionNumber)
+        public async Task<List<DocumentResponse>> GetDocumentsByChannelAsync(int channelId)
         {
-            var doc = await _context.Documents.FindAsync(documentId);
-            if (doc == null) return null;
+            var docs = await _context.Documents
+                .Where(d => d.ChannelId == channelId)
+                .OrderBy(d => d.CreatedAt)
+                .ToListAsync();
 
-            if (string.IsNullOrWhiteSpace(doc.FileType))
+            var list = new List<DocumentResponse>();
+            foreach (var d in docs)
             {
-                doc.FileType = "application/octet-stream";
+                var ownerName = "User_" + d.OwnerUserId;
+                list.Add(new DocumentResponse(
+                    d.Id,
+                    d.Name,
+                    d.OwnerUserId,
+                    d.CreatedAt,
+                    d.FileType,
+                    d.ChannelId,
+                    ownerName,
+                    d.FileExtension
+                ));
             }
-
-            var finalPath = await ReconstructFileAsync(documentId, versionNumber);
-            if (finalPath == null || !System.IO.File.Exists(finalPath))
-                return null;
-
-            var fileStream = new FileStream(finalPath, FileMode.Open, FileAccess.Read);
-
-            var docNameSafe = SanitizeFileName(doc.Name);
-            var finalFileName = $"{docNameSafe}_v{versionNumber}{doc.FileExtension}";
-
-            return new FileDownloadResult
-            {
-                FileStream = fileStream,
-                FileName = finalFileName,
-                ContentType = doc.FileType
-            };
+            return list;
         }
 
         public async Task<List<DocumentVersionResponse>> GetDocumentVersionsAsync(int documentId)
@@ -202,18 +159,76 @@ namespace De.Hsfl.LoomChat.File.Services
                 .OrderBy(v => v.VersionNumber)
                 .ToListAsync();
 
-            return versions
-                .Select(v => new DocumentVersionResponse(
-                    v.Id,
-                    v.DocumentId,
-                    v.VersionNumber,
-                    v.CreatedAt,
-                    v.Document?.FileExtension ?? ".bin",
-                    v.Document?.FileType ?? "application/octet-stream"
-                ))
-                .ToList();
+            return versions.Select(v => new DocumentVersionResponse(
+                v.Id,
+                v.DocumentId,
+                v.VersionNumber,
+                v.CreatedAt,
+                v.Document?.FileExtension ?? ".bin",
+                v.Document?.FileType ?? "application/octet-stream"
+            )).ToList();
         }
 
+        public async Task<FileDownloadResult?> DownloadDocumentVersionAsync(int documentId, int versionNumber)
+        {
+            var doc = await _context.Documents.FindAsync(documentId);
+            if (doc == null) return null;
+
+            var version = await _context.DocumentVersions
+                .FirstOrDefaultAsync(v => v.DocumentId == documentId && v.VersionNumber == versionNumber);
+            if (version == null) return null;
+
+            if (!global::System.IO.File.Exists(version.StoragePath)) return null;
+
+            var stream = new FileStream(version.StoragePath, FileMode.Open, FileAccess.Read);
+            var docNameSafe = SanitizeFileName(doc.Name);
+            var fileName = $"{docNameSafe}_v{version.VersionNumber}{doc.FileExtension}";
+
+            var contentType = doc.FileType ?? "application/octet-stream";
+
+            return new FileDownloadResult
+            {
+                FileStream = stream,
+                FileName = fileName,
+                ContentType = contentType
+            };
+        }
+
+        // -------------------------------------------------------
+        // LÖSCHEN: EIN DOKUMENT
+        // -------------------------------------------------------
+        public async Task<bool> DeleteDocumentAsync(int documentId, int currentUserId)
+        {
+            var doc = await _context.Documents
+                .Include(d => d.DocumentVersions)
+                .FirstOrDefaultAsync(d => d.Id == documentId);
+            if (doc == null) return false;
+
+            if (doc.OwnerUserId != currentUserId) return false;
+
+            // Physische Dateien entfernen
+            foreach (var ver in doc.DocumentVersions)
+            {
+                if (global::System.IO.File.Exists(ver.StoragePath))
+                {
+                    global::System.IO.File.Delete(ver.StoragePath);
+                }
+            }
+
+            _context.Documents.Remove(doc);
+            await _context.SaveChangesAsync();
+
+            // Broadcast => "DocumentDeleted"
+            await _fileHubContext.Clients
+                .Group($"file_channel_{doc.ChannelId}")
+                .SendAsync("DocumentDeleted", doc.Id);
+
+            return true;
+        }
+
+        // -------------------------------------------------------
+        // LÖSCHEN: EINE EINZELNE VERSION
+        // -------------------------------------------------------
         public async Task<bool> DeleteVersionAsync(int documentId, int versionNumber, int currentUserId)
         {
             var doc = await _context.Documents
@@ -226,85 +241,25 @@ namespace De.Hsfl.LoomChat.File.Services
                 .FirstOrDefault(v => v.VersionNumber == versionNumber);
             if (version == null) return false;
 
-            // Prüfen, ob andere Versionen auf dieser Version basieren
-            bool isBaseForOthers = doc.DocumentVersions
-                .Any(v => v.BaseVersionId == version.Id);
-            if (isBaseForOthers) return false;
+            if (global::System.IO.File.Exists(version.StoragePath))
+            {
+                global::System.IO.File.Delete(version.StoragePath);
+            }
 
             _context.DocumentVersions.Remove(version);
             await _context.SaveChangesAsync();
 
-            if (System.IO.File.Exists(version.StoragePath))
-            {
-                System.IO.File.Delete(version.StoragePath);
-            }
+            // Broadcast => "VersionDeleted"
+            await _fileHubContext.Clients
+                .Group($"file_channel_{doc.ChannelId}")
+                .SendAsync("VersionDeleted", new { DocumentId = doc.Id, VersionNumber = versionNumber });
+
             return true;
         }
 
-        public async Task<bool> DeleteAllVersionsAsync(int documentId, int currentUserId)
+        private string SanitizeFileName(string input)
         {
-            var doc = await _context.Documents
-                .Include(d => d.DocumentVersions)
-                .FirstOrDefaultAsync(d => d.Id == documentId);
-            if (doc == null) return false;
-            if (doc.OwnerUserId != currentUserId) return false;
-
-            foreach (var ver in doc.DocumentVersions)
-            {
-                if (System.IO.File.Exists(ver.StoragePath))
-                {
-                    System.IO.File.Delete(ver.StoragePath);
-                }
-            }
-            _context.DocumentVersions.RemoveRange(doc.DocumentVersions);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<List<DocumentResponse>> GetDocumentsByChannelAsync(int channelId)
-        {
-            var docs = await _context.Documents
-                .Where(d => d.ChannelId == channelId)
-                .OrderBy(d => d.CreatedAt)
-                .ToListAsync();
-
-            return docs.Select(d => new DocumentResponse(
-                d.Id,
-                d.Name,
-                d.OwnerUserId,
-                d.CreatedAt,
-                d.FileType,
-                d.ChannelId
-            )).ToList();
-        }
-
-        private async Task<string?> ReconstructFileAsync(int documentId, int versionNumber)
-        {
-            var version = await _context.DocumentVersions
-                .FirstOrDefaultAsync(v => v.DocumentId == documentId && v.VersionNumber == versionNumber);
-            if (version == null) return null;
-
-            if (version.IsFull) return version.StoragePath;
-            if (!version.BaseVersionId.HasValue) return null;
-
-            var baseVersion = await _context.DocumentVersions
-                .FirstOrDefaultAsync(v => v.Id == version.BaseVersionId.Value);
-            if (baseVersion == null) return null;
-
-            var basePath = await ReconstructFileAsync(documentId, baseVersion.VersionNumber);
-            if (basePath == null || !System.IO.File.Exists(basePath))
-                return null;
-
-            var tempOut = Path.Combine(_storageOptions.StoragePath,
-                $"reconstruct_{documentId}_v{versionNumber}_{System.Guid.NewGuid()}.tmp");
-
-            DeltaUtility.ApplyDelta(basePath, version.StoragePath, tempOut);
-            return tempOut;
-        }
-
-        private static string SanitizeFileName(string input)
-        {
-            foreach (var c in System.IO.Path.GetInvalidFileNameChars())
+            foreach (var c in Path.GetInvalidFileNameChars())
             {
                 input = input.Replace(c, '_');
             }

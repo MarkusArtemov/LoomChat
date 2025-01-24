@@ -163,22 +163,33 @@
                             <RowDefinition Height="1*"/>
                         </Grid.RowDefinitions>
 
+                        <!-- Im <TabItem Header="Dateien"> ... -->
                         <StackPanel Orientation="Horizontal" Grid.Row="0">
                             <Button Content="Neues Dokument"
-                                    Command="{Binding CreateDocumentCommand}"
-                                    Margin="0,0,10,0"/>
+            Command="{Binding CreateDocumentCommand}"
+            Margin="0,0,10,0"/>
                             <Button Content="Upload Version"
-                                    Command="{Binding UploadVersionCommand}"
-                                    Margin="0,0,10,0"/>
+            Command="{Binding UploadVersionCommand}"
+            Margin="0,0,10,0"/>
                             <Button Content="Download Version"
-                                    Command="{Binding DownloadVersionCommand}"
-                                    Margin="0,0,10,0"/>
+            Command="{Binding DownloadVersionCommand}"
+            Margin="0,0,10,0"/>
+
+                            <!-- Button zum Löschen einer einzelnen Version -->
+                            <Button Content="Delete Version"
+            Command="{Binding DeleteVersionCommand}"
+            Margin="0,0,10,0"/>
+                            <!-- Neu: Dokument löschen -->
+                            <Button Content="Delete Document"
+            Command="{Binding DeleteDocumentCommand}"
+            Margin="0,0,10,0"/>
                         </StackPanel>
+
 
                         <GroupBox Header="Dokumente" Grid.Row="1" Margin="0,5,0,5">
                             <ListView ItemsSource="{Binding Documents}"
-                                      SelectedItem="{Binding SelectedDocument}"
-                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+                      SelectedItem="{Binding SelectedDocument}"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Name}"/>
@@ -189,8 +200,8 @@
 
                         <GroupBox Header="Versionen" Grid.Row="2">
                             <ListView ItemsSource="{Binding Versions}"
-                                      SelectedItem="{Binding SelectedVersion}"
-                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+                      SelectedItem="{Binding SelectedVersion}"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto">
                                 <ListView.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="Version: ">
@@ -206,6 +217,7 @@
                         </GroupBox>
                     </Grid>
                 </TabItem>
+
             </TabControl>
         </Border>
 

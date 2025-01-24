@@ -4,14 +4,23 @@ namespace De.Hsfl.LoomChat.Common.Dtos
 {
     public class DocumentVersionResponse
     {
-        public int Id { get; }
-        public int DocumentId { get; }
-        public int VersionNumber { get; }
-        public DateTime CreatedAt { get; }
-        public string FileExtension { get; }
-        public string FileType { get; }
+        public int Id { get; set; }
+        public int DocumentId { get; set; }
+        public int VersionNumber { get; set; }
+        public DateTime CreatedAt { get; set; }
 
-        public DocumentVersionResponse(int id, int documentId, int versionNumber, DateTime createdAt, string fileExtension, string fileType)
+        public string FileExtension { get; set; } = string.Empty;
+        public string FileType { get; set; } = string.Empty;
+
+        public DocumentVersionResponse() { }
+
+        public DocumentVersionResponse(
+            int id,
+            int documentId,
+            int versionNumber,
+            DateTime createdAt,
+            string fileExtension,
+            string fileType)
         {
             Id = id;
             DocumentId = documentId;
@@ -20,5 +29,7 @@ namespace De.Hsfl.LoomChat.Common.Dtos
             FileExtension = fileExtension;
             FileType = fileType;
         }
+
+        public string FullVersionName => $"v{VersionNumber} {FileExtension}";
     }
 }
