@@ -1,9 +1,15 @@
 ﻿using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Http;
 using De.Hsfl.LoomChat.File.Persistence;
 using De.Hsfl.LoomChat.File.Options;
 using De.Hsfl.LoomChat.File.Models;
 using De.Hsfl.LoomChat.File.Helpers;
+using De.Hsfl.LoomChat.File.Hubs;  // <-- Wichtig
 using De.Hsfl.LoomChat.Common.Dtos;
 
 namespace De.Hsfl.LoomChat.File.Services
@@ -12,11 +18,16 @@ namespace De.Hsfl.LoomChat.File.Services
     {
         private readonly FileDbContext _context;
         private readonly FileStorageOptions _storageOptions;
+        private readonly IHubContext<FileHub> _fileHubContext; // <-- wir binden nur FileHub ein
 
-        public FileService(FileDbContext context, FileStorageOptions storageOptions)
+        public FileService(
+            FileDbContext context,
+            FileStorageOptions storageOptions,
+            IHubContext<FileHub> fileHubContext)
         {
             _context = context;
             _storageOptions = storageOptions;
+            _fileHubContext = fileHubContext;
         }
 
         public async Task<DocumentResponse> CreateDocumentAsync(CreateDocumentRequest request, int userId)
@@ -26,14 +37,14 @@ namespace De.Hsfl.LoomChat.File.Services
                 Name = request.Name,
                 ChannelId = request.ChannelId,
                 OwnerUserId = userId,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = System.DateTime.UtcNow,
                 FileType = "application/octet-stream",
                 FileExtension = ".bin"
             };
             _context.Documents.Add(doc);
             await _context.SaveChangesAsync();
 
-            return new DocumentResponse(
+            var docResponse = new DocumentResponse(
                 doc.Id,
                 doc.Name,
                 doc.OwnerUserId,
@@ -41,6 +52,13 @@ namespace De.Hsfl.LoomChat.File.Services
                 doc.FileType,
                 doc.ChannelId
             );
+
+            // Hier die Echtzeit-Benachrichtigung an alle Clients,
+            // die sich in Gruppe "file_channel_{doc.ChannelId}" befinden
+            await _fileHubContext.Clients.Group($"file_channel_{doc.ChannelId}")
+                .SendAsync("DocumentCreated", docResponse);
+
+            return docResponse;
         }
 
         public async Task<DocumentVersionResponse?> UploadDocumentVersionAsync(int documentId, IFormFile file, int currentUserId)
@@ -92,7 +110,7 @@ namespace De.Hsfl.LoomChat.File.Services
                     IsFull = true,
                     BaseVersionId = null,
                     StoragePath = fullPath,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = System.DateTime.UtcNow
                 };
             }
             else
@@ -106,15 +124,18 @@ namespace De.Hsfl.LoomChat.File.Services
                 if (baseFilePath == null) return null;
 
                 var tempNewFile = Path.Combine(_storageOptions.StoragePath,
-                    $"temp_new_{Guid.NewGuid()}{doc.FileExtension}");
+                    $"temp_new_{System.Guid.NewGuid()}{doc.FileExtension}");
                 using (var fs = new FileStream(tempNewFile, FileMode.Create))
                 {
                     await file.CopyToAsync(fs);
                 }
+
+                // Erzeuge Delta
                 DeltaUtility.CreateDelta(baseFilePath, tempNewFile, fullPath);
-                if (global::System.IO.File.Exists(tempNewFile))
+
+                if (System.IO.File.Exists(tempNewFile))
                 {
-                    global::System.IO.File.Delete(tempNewFile);
+                    System.IO.File.Delete(tempNewFile);
                 }
 
                 newVersion = new DocumentVersion
@@ -124,13 +145,14 @@ namespace De.Hsfl.LoomChat.File.Services
                     IsFull = false,
                     BaseVersionId = prevVersion.Id,
                     StoragePath = fullPath,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = System.DateTime.UtcNow
                 };
             }
+
             _context.DocumentVersions.Add(newVersion);
             await _context.SaveChangesAsync();
 
-            return new DocumentVersionResponse(
+            var versionResponse = new DocumentVersionResponse(
                 newVersion.Id,
                 newVersion.DocumentId,
                 newVersion.VersionNumber,
@@ -138,6 +160,12 @@ namespace De.Hsfl.LoomChat.File.Services
                 doc.FileExtension,
                 doc.FileType
             );
+
+            // Und hier broadcasten wir "VersionCreated"
+            await _fileHubContext.Clients.Group($"file_channel_{doc.ChannelId}")
+                .SendAsync("VersionCreated", versionResponse);
+
+            return versionResponse;
         }
 
         public async Task<FileDownloadResult?> DownloadDocumentVersionAsync(int documentId, int versionNumber)
@@ -151,7 +179,7 @@ namespace De.Hsfl.LoomChat.File.Services
             }
 
             var finalPath = await ReconstructFileAsync(documentId, versionNumber);
-            if (finalPath == null || !global::System.IO.File.Exists(finalPath))
+            if (finalPath == null || !System.IO.File.Exists(finalPath))
                 return null;
 
             var fileStream = new FileStream(finalPath, FileMode.Open, FileAccess.Read);
@@ -198,6 +226,7 @@ namespace De.Hsfl.LoomChat.File.Services
                 .FirstOrDefault(v => v.VersionNumber == versionNumber);
             if (version == null) return false;
 
+            // Prüfen, ob andere Versionen auf dieser Version basieren
             bool isBaseForOthers = doc.DocumentVersions
                 .Any(v => v.BaseVersionId == version.Id);
             if (isBaseForOthers) return false;
@@ -205,9 +234,9 @@ namespace De.Hsfl.LoomChat.File.Services
             _context.DocumentVersions.Remove(version);
             await _context.SaveChangesAsync();
 
-            if (global::System.IO.File.Exists(version.StoragePath))
+            if (System.IO.File.Exists(version.StoragePath))
             {
-                global::System.IO.File.Delete(version.StoragePath);
+                System.IO.File.Delete(version.StoragePath);
             }
             return true;
         }
@@ -222,9 +251,9 @@ namespace De.Hsfl.LoomChat.File.Services
 
             foreach (var ver in doc.DocumentVersions)
             {
-                if (global::System.IO.File.Exists(ver.StoragePath))
+                if (System.IO.File.Exists(ver.StoragePath))
                 {
-                    global::System.IO.File.Delete(ver.StoragePath);
+                    System.IO.File.Delete(ver.StoragePath);
                 }
             }
             _context.DocumentVersions.RemoveRange(doc.DocumentVersions);
@@ -263,11 +292,11 @@ namespace De.Hsfl.LoomChat.File.Services
             if (baseVersion == null) return null;
 
             var basePath = await ReconstructFileAsync(documentId, baseVersion.VersionNumber);
-            if (basePath == null || !global::System.IO.File.Exists(basePath))
+            if (basePath == null || !System.IO.File.Exists(basePath))
                 return null;
 
             var tempOut = Path.Combine(_storageOptions.StoragePath,
-                $"reconstruct_{documentId}_v{versionNumber}_{Guid.NewGuid()}.tmp");
+                $"reconstruct_{documentId}_v{versionNumber}_{System.Guid.NewGuid()}.tmp");
 
             DeltaUtility.ApplyDelta(basePath, version.StoragePath, tempOut);
             return tempOut;
@@ -275,7 +304,7 @@ namespace De.Hsfl.LoomChat.File.Services
 
         private static string SanitizeFileName(string input)
         {
-            foreach (var c in Path.GetInvalidFileNameChars())
+            foreach (var c in System.IO.Path.GetInvalidFileNameChars())
             {
                 input = input.Replace(c, '_');
             }

@@ -29,12 +29,10 @@ namespace De.Hsfl.LoomChat.File.Controllers
         [HttpPost("create-document")]
         public async Task<ActionResult<DocumentResponse>> CreateDocument([FromBody] CreateDocumentRequest request)
         {
-            if (request == null)
-                return BadRequest("No data provided");
+            if (request == null) return BadRequest("No data provided");
 
             int currentUserId = GetCurrentUserId();
-            if (currentUserId == 0)
-                return Unauthorized("No valid user token");
+            if (currentUserId == 0) return Unauthorized("No valid user token");
 
             var docResponse = await _fileService.CreateDocumentAsync(request, currentUserId);
             return Ok(docResponse);

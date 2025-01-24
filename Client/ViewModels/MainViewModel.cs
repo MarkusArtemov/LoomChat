@@ -7,6 +7,7 @@ using System.Windows.Input;
 using De.Hsfl.LoomChat.Client.Commands;
 using De.Hsfl.LoomChat.Client.Global;
 using De.Hsfl.LoomChat.Client.Services;
+using De.Hsfl.LoomChat.Client.Views;
 using De.Hsfl.LoomChat.Common.Dtos;
 using De.Hsfl.LoomChat.Common.Models;
 
@@ -16,11 +17,15 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
     {
         private readonly ChatService _chatService;
         private readonly LoginService _loginService;
+
+        // Unser FileService mit SignalR für Files
         private FileService _fileService;
 
         public ObservableCollection<ChannelDto> OpenChats { get; set; }
         public ObservableCollection<ChannelDto> DirectMessages { get; set; }
         public ObservableCollection<User> Users { get; set; }
+
+        // Datei-bezogene Collections
         public ObservableCollection<DocumentResponse> Documents { get; set; }
         public ObservableCollection<DocumentVersionResponse> Versions { get; set; }
 
@@ -151,10 +156,40 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 MessageBox.Show("Kein JWT-Token vorhanden.");
                 return;
             }
+
+            // 1) Chat-SignalR starten
             await _chatService.InitializeSignalRAsync(jwt);
 
+            // 2) FileService instanzieren
             _fileService = new FileService("http://localhost:5277", jwt);
+            await _fileService.InitializeFileHubAsync(); // <-- FileHub 
 
+            // Echtzeit-Ereignisse vom FileHub binden
+            _fileService.OnDocumentCreated += doc =>
+            {
+                // Nur hinzufügen, wenn es zum aktuell gewählten Channel passt
+                if (doc.ChannelId == SelectedChannel?.Id)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        Documents.Add(doc);
+                    });
+                }
+            };
+
+            _fileService.OnVersionCreated += version =>
+            {
+                // Falls das neue Version zu unserem SelectedDocument passt
+                if (SelectedDocument != null && SelectedDocument.Id == version.DocumentId)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        Versions.Add(version);
+                    });
+                }
+            };
+
+            // 3) Chat-Service-Events
             _chatService.OnMessageReceived += (channelId, senderUserId, senderName, content, sentAt) =>
             {
                 Application.Current.Dispatcher.Invoke(() =>
@@ -200,12 +235,13 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 });
             };
 
+            // 4) Channels / DMs / Users laden
             var channels = await _chatService.LoadChannels(new GetChannelsRequest(SessionStore.User.Id));
             if (channels != null)
             {
                 foreach (var c in channels)
                 {
-                    c.ChatMessages = new ObservableCollection<ChatMessageDto>();
+                    c.ChatMessages = new System.Collections.ObjectModel.ObservableCollection<ChatMessageDto>();
                     OpenChats.Add(c);
                 }
             }
@@ -215,7 +251,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             {
                 foreach (var d in dms)
                 {
-                    d.ChatMessages = new ObservableCollection<ChatMessageDto>();
+                    d.ChatMessages = new System.Collections.ObjectModel.ObservableCollection<ChatMessageDto>();
                     DirectMessages.Add(d);
                 }
             }
@@ -232,15 +268,18 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 
         private ChannelDto FindChannel(int channelId)
         {
-            var c = OpenChats.FirstOrDefault(x => x.Id == channelId)
+            return OpenChats.FirstOrDefault(x => x.Id == channelId)
                 ?? DirectMessages.FirstOrDefault(x => x.Id == channelId);
-            return c;
         }
 
-        private void ExecuteLogout()
+            private void ExecuteLogout()
         {
-            _loginService.Logout();
+            SessionStore.User = null;
+            SessionStore.JwtToken = null;
+            MainWindow.NavigationService.Navigate(new LoginView());
         }
+
+       
 
         private void ExecuteOpenPopup()
         {
@@ -264,7 +303,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             var dto = await _chatService.CreateNewChannel(req);
             if (dto != null)
             {
-                dto.ChatMessages = new ObservableCollection<ChatMessageDto>();
+                dto.ChatMessages = new System.Collections.ObjectModel.ObservableCollection<ChatMessageDto>();
                 OpenChats.Add(dto);
             }
         }
@@ -282,8 +321,14 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             SelectedChannel = channel;
             if (channel != null)
             {
+                // Chat-Hub joinen
                 await _chatService.JoinChannel(channel.Id);
+
+                // Dokumente + Versionen laden
                 await LoadDocumentsForChannel(channel.Id);
+
+                // FileHub joinen => Echtzeit-Meldungen
+                await _fileService.JoinFileChannel(channel.Id);
             }
         }
 
@@ -293,7 +338,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             var chan = await _chatService.OpenChatWithUser(new OpenChatWithUserRequest(SessionStore.User.Id, user.Id));
             if (chan != null)
             {
-                chan.ChatMessages = new ObservableCollection<ChatMessageDto>();
+                chan.ChatMessages = new System.Collections.ObjectModel.ObservableCollection<ChatMessageDto>();
                 var existing = DirectMessages.FirstOrDefault(c => c.Id == chan.Id);
                 if (existing == null)
                 {
@@ -313,6 +358,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             Documents.Clear();
             Versions.Clear();
             if (_fileService == null) return;
+
             var docs = await _fileService.GetDocumentsByChannelAsync(channelId);
             if (docs != null)
             {
@@ -327,6 +373,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         {
             if (_fileService == null) return;
             Versions.Clear();
+
             var vers = await _fileService.GetVersionsAsync(documentId);
             if (vers != null)
             {
@@ -345,11 +392,13 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 return;
             }
             if (_fileService == null) return;
+
+            // Wir erstellen & hochladen ein Dokument,
+            // ABER wir fügen es NICHT manuell zu Documents hinzu.
+            // => Verlassen uns auf das SignalR-Ereignis "DocumentCreated"
             var doc = await _fileService.CreateAndUploadFileForChannel(SelectedChannel.Id);
-            if (doc != null)
-            {
-                Documents.Add(doc);
-            }
+            // Falls du eine Warteanimation brauchst, tu es hier, 
+            // aber kein 'Documents.Add(doc)' mehr!
         }
 
         private async void ExecuteUploadVersion()
@@ -360,11 +409,10 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 return;
             }
             if (_fileService == null) return;
-            var ver = await _fileService.UploadVersionAsync(SelectedDocument.Id);
-            if (ver != null)
-            {
-                Versions.Add(ver);
-            }
+
+            // Hier genau so: wir fügen NICHT manuell zu 'Versions' hinzu
+            var ver = await _fileService.UploadDocumentVersionAsync(SelectedDocument.Id);
+            // => OnVersionCreated(...) tut das für uns in Echtzeit
         }
 
         private async void ExecuteDownloadVersion()
@@ -380,6 +428,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 return;
             }
             if (_fileService == null) return;
+
             await _fileService.DownloadVersionAsync(SelectedDocument.Id, SelectedVersion.VersionNumber);
         }
     }
