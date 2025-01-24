@@ -56,19 +56,5 @@ namespace De.Hsfl.LoomChat.Client.Services
                 }
             }
         }
-
-        /// <summary>
-        /// Führt ein Logout durch, setzt die SessionStore-Daten zurück.
-        /// </summary>
-        public async Task<bool> Logout()
-        {
-            SessionStore.User = null;
-            SessionStore.JwtToken = null;
-            // Falls es noch einen Logout-Endpunkt gibt, könntest du ihn hier aufrufen
-            // z.B.:
-            // await client.PostAsync("http://localhost:5232/Auth/logout", null);
-
-            return true;
-        }
     }
 }

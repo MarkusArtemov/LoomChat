@@ -157,55 +157,80 @@
 
                 <TabItem Header="Dateien">
                     <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="2*"/>
-                            <RowDefinition Height="1*"/>
-                        </Grid.RowDefinitions>
+                        <!-- 
+             (A) Hinweis-Text, wenn kein Channel ausgewählt 
+                 => IsChatNotVisible == true
+        -->
+                        <TextBlock Text="Bitte wähle einen Chat aus."
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   FontSize="16"
+                   FontWeight="Bold"
+                   Visibility="{Binding IsChatNotVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                        <StackPanel Orientation="Horizontal" Grid.Row="0">
-                            <Button Content="Neues Dokument"
-                                    Command="{Binding CreateDocumentCommand}"
-                                    Margin="0,0,10,0"/>
-                            <Button Content="Upload Version"
-                                    Command="{Binding UploadVersionCommand}"
-                                    Margin="0,0,10,0"/>
-                            <Button Content="Download Version"
-                                    Command="{Binding DownloadVersionCommand}"
-                                    Margin="0,0,10,0"/>
-                        </StackPanel>
+                        <!-- 
+             (B) Der eigentliche Dateien-Bereich,
+                 sichtbar nur wenn ChatVisible == true
+        -->
+                        <Grid Visibility="{Binding ChatVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="2*"/>
+                                <RowDefinition Height="1*"/>
+                            </Grid.RowDefinitions>
 
-                        <GroupBox Header="Dokumente" Grid.Row="1" Margin="0,5,0,5">
-                            <ListView ItemsSource="{Binding Documents}"
-                                      SelectedItem="{Binding SelectedDocument}"
-                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
-                                <ListView.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding Name}"/>
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
-                        </GroupBox>
+                            <StackPanel Orientation="Horizontal" Grid.Row="0">
+                                <Button Content="Neues Dokument"
+                        Command="{Binding CreateDocumentCommand}"
+                        Margin="0,0,10,0"/>
+                                <Button Content="Upload Version"
+                        Command="{Binding UploadVersionCommand}"
+                        Margin="0,0,10,0"/>
+                                <Button Content="Download Version"
+                        Command="{Binding DownloadVersionCommand}"
+                        Margin="0,0,10,0"/>
 
-                        <GroupBox Header="Versionen" Grid.Row="2">
-                            <ListView ItemsSource="{Binding Versions}"
-                                      SelectedItem="{Binding SelectedVersion}"
-                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
-                                <ListView.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="Version: ">
-                                            <TextBlock.Inlines>
-                                                <Run Text="{Binding VersionNumber, Mode=OneWay}" />
-                                                <Run Text=" | " />
-                                                <Run Text="{Binding CreatedAt, Mode=OneWay, StringFormat=yyyy-MM-dd HH:mm:ss}" />
-                                            </TextBlock.Inlines>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </ListView.ItemTemplate>
-                            </ListView>
-                        </GroupBox>
+                                <Button Content="Delete Version"
+                        Command="{Binding DeleteVersionCommand}"
+                        Margin="0,0,10,0"/>
+                                <Button Content="Delete Document"
+                        Command="{Binding DeleteDocumentCommand}"
+                        Margin="0,0,10,0"/>
+                            </StackPanel>
+
+                            <GroupBox Header="Dokumente" Grid.Row="1" Margin="0,5,0,5">
+                                <ListView ItemsSource="{Binding Documents}"
+                          SelectedItem="{Binding SelectedDocument}"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </GroupBox>
+
+                            <GroupBox Header="Versionen" Grid.Row="2">
+                                <ListView ItemsSource="{Binding Versions}"
+                          SelectedItem="{Binding SelectedVersion}"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                    <ListView.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="Version: ">
+                                                <TextBlock.Inlines>
+                                                    <Run Text="{Binding VersionNumber, Mode=OneWay}" />
+                                                    <Run Text=" | " />
+                                                    <Run Text="{Binding CreatedAt, Mode=OneWay, StringFormat=yyyy-MM-dd HH:mm:ss}" />
+                                                </TextBlock.Inlines>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ListView.ItemTemplate>
+                                </ListView>
+                            </GroupBox>
+                        </Grid>
                     </Grid>
                 </TabItem>
+
             </TabControl>
         </Border>
 

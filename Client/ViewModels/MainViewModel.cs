@@ -7,6 +7,7 @@ using System.Windows.Input;
 using De.Hsfl.LoomChat.Client.Commands;
 using De.Hsfl.LoomChat.Client.Global;
 using De.Hsfl.LoomChat.Client.Services;
+using De.Hsfl.LoomChat.Client.Views;
 using De.Hsfl.LoomChat.Common.Dtos;
 using De.Hsfl.LoomChat.Common.Models;
 
@@ -82,6 +83,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             }
         }
 
+        // Commands
         public ICommand LogoutCommand { get; }
         public ICommand OpenPopupCommand { get; }
         public ICommand ClosePopupCommand { get; }
@@ -90,6 +92,11 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         public ICommand CreateDocumentCommand { get; }
         public ICommand UploadVersionCommand { get; }
         public ICommand DownloadVersionCommand { get; }
+
+        // Delete Version
+        public ICommand DeleteVersionCommand { get; }
+        // NEU: Delete Document
+        public ICommand DeleteDocumentCommand { get; }
 
         private DocumentResponse _selectedDocument;
         public DocumentResponse SelectedDocument
@@ -136,6 +143,10 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             CreateDocumentCommand = new RelayCommand(_ => ExecuteCreateDocument());
             UploadVersionCommand = new RelayCommand(_ => ExecuteUploadVersion());
             DownloadVersionCommand = new RelayCommand(_ => ExecuteDownloadVersion());
+
+            DeleteVersionCommand = new RelayCommand(_ => ExecuteDeleteVersion());
+            // NEU: DeleteDocument statt "DeleteAllVersions"
+            DeleteDocumentCommand = new RelayCommand(_ => ExecuteDeleteDocument());
         }
 
         public async void LoadAsyncData()
@@ -151,10 +162,35 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 MessageBox.Show("Kein JWT-Token vorhanden.");
                 return;
             }
+
             await _chatService.InitializeSignalRAsync(jwt);
 
             _fileService = new FileService("http://localhost:5277", jwt);
+            await _fileService.InitializeFileHubAsync();
 
+            _fileService.OnDocumentCreated += doc =>
+            {
+                if (doc.ChannelId == SelectedChannel?.Id)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        Documents.Add(doc);
+                    });
+                }
+            };
+
+            _fileService.OnVersionCreated += version =>
+            {
+                if (SelectedDocument != null && SelectedDocument.Id == version.DocumentId)
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        Versions.Add(version);
+                    });
+                }
+            };
+
+            // Chat-Ereignisse
             _chatService.OnMessageReceived += (channelId, senderUserId, senderName, content, sentAt) =>
             {
                 Application.Current.Dispatcher.Invoke(() =>
@@ -200,6 +236,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 });
             };
 
+            // Channels, DMs, Users laden
             var channels = await _chatService.LoadChannels(new GetChannelsRequest(SessionStore.User.Id));
             if (channels != null)
             {
@@ -232,14 +269,15 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 
         private ChannelDto FindChannel(int channelId)
         {
-            var c = OpenChats.FirstOrDefault(x => x.Id == channelId)
+            return OpenChats.FirstOrDefault(x => x.Id == channelId)
                 ?? DirectMessages.FirstOrDefault(x => x.Id == channelId);
-            return c;
         }
 
         private void ExecuteLogout()
         {
-            _loginService.Logout();
+            SessionStore.User = null;
+            SessionStore.JwtToken = null;
+            MainWindow.NavigationService.Navigate(new LoginView());
         }
 
         private void ExecuteOpenPopup()
@@ -284,6 +322,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             {
                 await _chatService.JoinChannel(channel.Id);
                 await LoadDocumentsForChannel(channel.Id);
+                await _fileService.JoinFileChannel(channel.Id);
             }
         }
 
@@ -313,6 +352,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             Documents.Clear();
             Versions.Clear();
             if (_fileService == null) return;
+
             var docs = await _fileService.GetDocumentsByChannelAsync(channelId);
             if (docs != null)
             {
@@ -327,6 +367,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         {
             if (_fileService == null) return;
             Versions.Clear();
+
             var vers = await _fileService.GetVersionsAsync(documentId);
             if (vers != null)
             {
@@ -345,11 +386,9 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 return;
             }
             if (_fileService == null) return;
+
             var doc = await _fileService.CreateAndUploadFileForChannel(SelectedChannel.Id);
-            if (doc != null)
-            {
-                Documents.Add(doc);
-            }
+            // Kommt per SignalR => kein manuelles Hinzufügen
         }
 
         private async void ExecuteUploadVersion()
@@ -360,11 +399,9 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 return;
             }
             if (_fileService == null) return;
-            var ver = await _fileService.UploadVersionAsync(SelectedDocument.Id);
-            if (ver != null)
-            {
-                Versions.Add(ver);
-            }
+
+            var ver = await _fileService.UploadDocumentVersionAsync(SelectedDocument.Id);
+            // Kommt per SignalR => kein manuelles Hinzufügen
         }
 
         private async void ExecuteDownloadVersion()
@@ -380,7 +417,43 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 return;
             }
             if (_fileService == null) return;
+
             await _fileService.DownloadVersionAsync(SelectedDocument.Id, SelectedVersion.VersionNumber);
+        }
+
+        private async void ExecuteDeleteVersion()
+        {
+            if (_fileService == null) return;
+            if (SelectedDocument == null || SelectedVersion == null)
+            {
+                MessageBox.Show("Keine Version ausgewählt.");
+                return;
+            }
+
+            var ok = await _fileService.DeleteVersionAsync(SelectedDocument.Id, SelectedVersion.VersionNumber);
+            if (ok)
+            {
+                // Versionsliste aktualisieren
+                Versions.Remove(SelectedVersion);
+            }
+        }
+
+        // NEU: Document statt AllVersions
+        private async void ExecuteDeleteDocument()
+        {
+            if (_fileService == null) return;
+            if (SelectedDocument == null)
+            {
+                MessageBox.Show("Kein Dokument ausgewählt.");
+                return;
+            }
+
+            var ok = await _fileService.DeleteDocumentAsync(SelectedDocument.Id);
+            if (ok)
+            {
+                Documents.Remove(SelectedDocument);
+                Versions.Clear();
+            }
         }
     }
 }
