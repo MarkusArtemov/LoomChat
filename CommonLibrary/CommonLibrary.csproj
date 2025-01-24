@@ -41,25 +41,35 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Dtos\ChannelDto.cs" />
-    <Compile Include="Dtos\ChannelMemberDto.cs" />
-    <Compile Include="Dtos\ChatMessageDto.cs" />
-    <Compile Include="Dtos\CreateChannelRequest.cs" />
-    <Compile Include="Dtos\CreateChannelResponse.cs" />
-    <Compile Include="Dtos\GetChannelsRequest.cs" />
-    <Compile Include="Dtos\GetChannelsResponse.cs" />
-    <Compile Include="Dtos\GetDirectChannelsRequest.cs" />
-    <Compile Include="Dtos\GetDirectChannelsResponse.cs" />
-    <Compile Include="Dtos\GetUsersRequest.cs" />
-    <Compile Include="Dtos\GetUsersResponse.cs" />
-    <Compile Include="Dtos\LoginRequest.cs" />
-    <Compile Include="Dtos\LoginResponse.cs" />
-    <Compile Include="Dtos\OpenChatWithUserRequest.cs" />
-    <Compile Include="Dtos\OpenChatWithUserResponse.cs" />
-    <Compile Include="Dtos\RegisterRequest.cs" />
-    <Compile Include="Dtos\RegisterResponse.cs" />
-    <Compile Include="Dtos\SendMessageRequest.cs" />
-    <Compile Include="Dtos\SendMessageResponse.cs" />
+    <Compile Include="Dtos\Chats\ArchiveChannelRequest.cs" />
+    <Compile Include="Dtos\Chats\ChannelDetailsResponse.cs" />
+    <Compile Include="Dtos\Chats\ChannelDto.cs" />
+    <Compile Include="Dtos\Chats\ChannelMemberDto.cs" />
+    <Compile Include="Dtos\Chats\ChannelMemberResponse.cs" />
+    <Compile Include="Dtos\Chats\ChannelResponse.cs" />
+    <Compile Include="Dtos\Chats\ChatMessageDto.cs" />
+    <Compile Include="Dtos\Chats\ChatMessageResponse.cs" />
+    <Compile Include="Dtos\Chats\CreateChannelRequest.cs" />
+    <Compile Include="Dtos\Chats\CreateChannelResponse.cs" />
+    <Compile Include="Dtos\Chats\GetChannelsRequest.cs" />
+    <Compile Include="Dtos\Chats\GetChannelsResponse.cs" />
+    <Compile Include="Dtos\Chats\GetDirectChannelsRequest.cs" />
+    <Compile Include="Dtos\Chats\GetDirectChannelsResponse.cs" />
+    <Compile Include="Dtos\Chats\GetUsersRequest.cs" />
+    <Compile Include="Dtos\Chats\GetUsersResponse.cs" />
+    <Compile Include="Dtos\Auth\LoginRequest.cs" />
+    <Compile Include="Dtos\Auth\LoginResponse.cs" />
+    <Compile Include="Dtos\Chats\JoinChannelRequest.cs" />
+    <Compile Include="Dtos\Chats\LeaveChannelRequest.cs" />
+    <Compile Include="Dtos\Chats\OpenChatWithUserRequest.cs" />
+    <Compile Include="Dtos\Chats\OpenChatWithUserResponse.cs" />
+    <Compile Include="Dtos\Auth\RegisterRequest.cs" />
+    <Compile Include="Dtos\Auth\RegisterResponse.cs" />
+    <Compile Include="Dtos\Chats\SendMessageRequest.cs" />
+    <Compile Include="Dtos\Chats\SendMessageResponse.cs" />
+    <Compile Include="Dtos\Files\CreateDocumentRequest.cs" />
+    <Compile Include="Dtos\Files\DocumentResponse.cs" />
+    <Compile Include="Dtos\Files\DocumentVersionResponse.cs" />
     <Compile Include="Enums\ChannelRole.cs" />
     <Compile Include="Models\Channel.cs" />
     <Compile Include="Models\ChannelMember.cs" />
@@ -68,8 +78,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Events\" />
-    <Folder Include="Interfaces\" />
     <Folder Include="Utils\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

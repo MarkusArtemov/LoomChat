@@ -1,9 +1,4 @@
-﻿using De.Hsfl.LoomChat.Common.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System;
 
 namespace De.Hsfl.LoomChat.Common.Dtos
 {
@@ -14,6 +9,5 @@ namespace De.Hsfl.LoomChat.Common.Dtos
         public int SenderUserId { get; set; }
         public string Content { get; set; }
         public DateTime SentAt { get; set; }
-        public Channel Channel { get; set; }
     }
 }

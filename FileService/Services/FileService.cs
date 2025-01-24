@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.IO;
+using Microsoft.EntityFrameworkCore;
 using De.Hsfl.LoomChat.File.Persistence;
 using De.Hsfl.LoomChat.File.Options;
 using De.Hsfl.LoomChat.File.Models;
@@ -29,7 +30,6 @@ namespace De.Hsfl.LoomChat.File.Services
                 FileType = "application/octet-stream",
                 FileExtension = ".bin"
             };
-
             _context.Documents.Add(doc);
             await _context.SaveChangesAsync();
 
@@ -43,19 +43,13 @@ namespace De.Hsfl.LoomChat.File.Services
             );
         }
 
-        public async Task<DocumentVersionResponse?> UploadDocumentVersionAsync(
-            int documentId,
-            IFormFile file,
-            int currentUserId
-        )
+        public async Task<DocumentVersionResponse?> UploadDocumentVersionAsync(int documentId, IFormFile file, int currentUserId)
         {
             var doc = await _context.Documents
                 .Include(d => d.DocumentVersions)
                 .FirstOrDefaultAsync(d => d.Id == documentId);
-
             if (doc == null) return null;
-            if (doc.OwnerUserId != currentUserId)
-                return null;
+            if (doc.OwnerUserId != currentUserId) return null;
 
             var extension = Path.GetExtension(file.FileName);
             if (!doc.DocumentVersions.Any())
@@ -68,13 +62,19 @@ namespace De.Hsfl.LoomChat.File.Services
                     return null;
             }
 
-            doc.FileType = file.ContentType ?? "application/octet-stream";
+            var contentType = file.ContentType;
+            if (string.IsNullOrWhiteSpace(contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+            doc.FileType = contentType;
 
             int newVersionNumber = doc.DocumentVersions.Any()
                 ? doc.DocumentVersions.Max(v => v.VersionNumber) + 1
                 : 1;
 
             bool isFull = (newVersionNumber % 5 == 1);
+
             var docNameSafe = SanitizeFileName(doc.Name);
             var serverFileName = $"{docNameSafe}_v{newVersionNumber}{doc.FileExtension}";
             var fullPath = Path.Combine(_storageOptions.StoragePath, serverFileName);
@@ -111,11 +111,10 @@ namespace De.Hsfl.LoomChat.File.Services
                 {
                     await file.CopyToAsync(fs);
                 }
-
                 DeltaUtility.CreateDelta(baseFilePath, tempNewFile, fullPath);
-                if (System.IO.File.Exists(tempNewFile))
+                if (global::System.IO.File.Exists(tempNewFile))
                 {
-                    System.IO.File.Delete(tempNewFile);
+                    global::System.IO.File.Delete(tempNewFile);
                 }
 
                 newVersion = new DocumentVersion
@@ -128,7 +127,6 @@ namespace De.Hsfl.LoomChat.File.Services
                     CreatedAt = DateTime.UtcNow
                 };
             }
-
             _context.DocumentVersions.Add(newVersion);
             await _context.SaveChangesAsync();
 
@@ -136,7 +134,9 @@ namespace De.Hsfl.LoomChat.File.Services
                 newVersion.Id,
                 newVersion.DocumentId,
                 newVersion.VersionNumber,
-                newVersion.CreatedAt
+                newVersion.CreatedAt,
+                doc.FileExtension,
+                doc.FileType
             );
         }
 
@@ -145,8 +145,13 @@ namespace De.Hsfl.LoomChat.File.Services
             var doc = await _context.Documents.FindAsync(documentId);
             if (doc == null) return null;
 
+            if (string.IsNullOrWhiteSpace(doc.FileType))
+            {
+                doc.FileType = "application/octet-stream";
+            }
+
             var finalPath = await ReconstructFileAsync(documentId, versionNumber);
-            if (finalPath == null || !System.IO.File.Exists(finalPath))
+            if (finalPath == null || !global::System.IO.File.Exists(finalPath))
                 return null;
 
             var fileStream = new FileStream(finalPath, FileMode.Open, FileAccess.Read);
@@ -170,7 +175,14 @@ namespace De.Hsfl.LoomChat.File.Services
                 .ToListAsync();
 
             return versions
-                .Select(v => new DocumentVersionResponse(v.Id, v.DocumentId, v.VersionNumber, v.CreatedAt))
+                .Select(v => new DocumentVersionResponse(
+                    v.Id,
+                    v.DocumentId,
+                    v.VersionNumber,
+                    v.CreatedAt,
+                    v.Document?.FileExtension ?? ".bin",
+                    v.Document?.FileType ?? "application/octet-stream"
+                ))
                 .ToList();
         }
 
@@ -180,9 +192,7 @@ namespace De.Hsfl.LoomChat.File.Services
                 .Include(d => d.DocumentVersions)
                 .FirstOrDefaultAsync(d => d.Id == documentId);
             if (doc == null) return false;
-
-            if (doc.OwnerUserId != currentUserId)
-                return false;
+            if (doc.OwnerUserId != currentUserId) return false;
 
             var version = doc.DocumentVersions
                 .FirstOrDefault(v => v.VersionNumber == versionNumber);
@@ -190,15 +200,15 @@ namespace De.Hsfl.LoomChat.File.Services
 
             bool isBaseForOthers = doc.DocumentVersions
                 .Any(v => v.BaseVersionId == version.Id);
-            if (isBaseForOthers)
-                return false;
+            if (isBaseForOthers) return false;
 
             _context.DocumentVersions.Remove(version);
             await _context.SaveChangesAsync();
 
-            if (System.IO.File.Exists(version.StoragePath))
-                System.IO.File.Delete(version.StoragePath);
-
+            if (global::System.IO.File.Exists(version.StoragePath))
+            {
+                global::System.IO.File.Delete(version.StoragePath);
+            }
             return true;
         }
 
@@ -208,16 +218,15 @@ namespace De.Hsfl.LoomChat.File.Services
                 .Include(d => d.DocumentVersions)
                 .FirstOrDefaultAsync(d => d.Id == documentId);
             if (doc == null) return false;
-
-            if (doc.OwnerUserId != currentUserId)
-                return false;
+            if (doc.OwnerUserId != currentUserId) return false;
 
             foreach (var ver in doc.DocumentVersions)
             {
-                if (System.IO.File.Exists(ver.StoragePath))
-                    System.IO.File.Delete(ver.StoragePath);
+                if (global::System.IO.File.Exists(ver.StoragePath))
+                {
+                    global::System.IO.File.Delete(ver.StoragePath);
+                }
             }
-
             _context.DocumentVersions.RemoveRange(doc.DocumentVersions);
             await _context.SaveChangesAsync();
             return true;
@@ -246,29 +255,22 @@ namespace De.Hsfl.LoomChat.File.Services
                 .FirstOrDefaultAsync(v => v.DocumentId == documentId && v.VersionNumber == versionNumber);
             if (version == null) return null;
 
-            if (version.IsFull)
-            {
-                return version.StoragePath;
-            }
-            else
-            {
-                if (!version.BaseVersionId.HasValue)
-                    return null;
+            if (version.IsFull) return version.StoragePath;
+            if (!version.BaseVersionId.HasValue) return null;
 
-                var baseVersion = await _context.DocumentVersions
-                    .FirstOrDefaultAsync(v => v.Id == version.BaseVersionId.Value);
-                if (baseVersion == null) return null;
+            var baseVersion = await _context.DocumentVersions
+                .FirstOrDefaultAsync(v => v.Id == version.BaseVersionId.Value);
+            if (baseVersion == null) return null;
 
-                var basePath = await ReconstructFileAsync(documentId, baseVersion.VersionNumber);
-                if (basePath == null || !System.IO.File.Exists(basePath))
-                    return null;
+            var basePath = await ReconstructFileAsync(documentId, baseVersion.VersionNumber);
+            if (basePath == null || !global::System.IO.File.Exists(basePath))
+                return null;
 
-                var tempOut = Path.Combine(_storageOptions.StoragePath,
-                    $"reconstruct_{documentId}_v{versionNumber}_{Guid.NewGuid()}.tmp");
+            var tempOut = Path.Combine(_storageOptions.StoragePath,
+                $"reconstruct_{documentId}_v{versionNumber}_{Guid.NewGuid()}.tmp");
 
-                DeltaUtility.ApplyDelta(basePath, version.StoragePath, tempOut);
-                return tempOut;
-            }
+            DeltaUtility.ApplyDelta(basePath, version.StoragePath, tempOut);
+            return tempOut;
         }
 
         private static string SanitizeFileName(string input)

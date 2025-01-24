@@ -2,8 +2,6 @@
 using De.Hsfl.LoomChat.Common.Dtos;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -13,7 +11,10 @@ namespace De.Hsfl.LoomChat.Client.Services
 {
     internal class LoginService
     {
-
+        /// <summary>
+        /// Führt ein Login gegen den Auth-Service durch
+        /// und speichert die Daten (User, JWT) im SessionStore.
+        /// </summary>
         public async Task<bool> Login(LoginRequest request)
         {
             using (var client = new HttpClient())
@@ -21,20 +22,30 @@ namespace De.Hsfl.LoomChat.Client.Services
                 try
                 {
                     var url = "http://localhost:5232/Auth/login";
-                    var jsonContent = new StringContent(JsonConvert.SerializeObject(request), Encoding.UTF8, "application/json");
+                    var jsonContent = new StringContent(
+                        JsonConvert.SerializeObject(request),
+                        Encoding.UTF8,
+                        "application/json"
+                    );
+
                     var response = await client.PostAsync(url, jsonContent);
                     if (response.IsSuccessStatusCode)
                     {
                         var responseBody = await response.Content.ReadAsStringAsync();
                         var responseObj = JsonConvert.DeserializeObject<LoginResponse>(responseBody);
+
+                        // SessionStore aktualisieren
                         SessionStore.User = new Common.Models.User(responseObj.UserID, responseObj.Username)
                         {
                             Token = responseObj.Token
                         };
+                        SessionStore.JwtToken = responseObj.Token;
+
                         return true;
                     }
                     else
                     {
+                        MessageBox.Show("Login fehlgeschlagen. HTTP-" + response.StatusCode);
                         return false;
                     }
                 }
@@ -46,8 +57,17 @@ namespace De.Hsfl.LoomChat.Client.Services
             }
         }
 
+        /// <summary>
+        /// Führt ein Logout durch, setzt die SessionStore-Daten zurück.
+        /// </summary>
         public async Task<bool> Logout()
         {
+            SessionStore.User = null;
+            SessionStore.JwtToken = null;
+            // Falls es noch einen Logout-Endpunkt gibt, könntest du ihn hier aufrufen
+            // z.B.:
+            // await client.PostAsync("http://localhost:5232/Auth/logout", null);
+
             return true;
         }
     }
