@@ -7,7 +7,8 @@ using De.Hsfl.LoomChat.Client.Commands;
 using De.Hsfl.LoomChat.Client.Services;
 using De.Hsfl.LoomChat.Common.Dtos;
 using De.Hsfl.LoomChat.Common.Models;
-using De.Hsfl.LoomChat.Client.Global; 
+using De.Hsfl.LoomChat.Client.Global;
+
 namespace De.Hsfl.LoomChat.Client.ViewModels
 {
     public class MainViewModel : BaseViewModel
@@ -42,7 +43,6 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 OnPropertyChanged(nameof(IsChatNotVisible));
             }
         }
-
         public bool IsChatNotVisible => !ChatVisible;
 
         private string _newMessage;
@@ -89,7 +89,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             _loginService = new LoginService(); // Falls du ihn brauchst
             _chatService = new ChatService();
 
-            // Initialisiere Collections
+            // Collections initialisieren
             OpenChats = new ObservableCollection<ChannelDto>();
             DirectMessages = new ObservableCollection<ChannelDto>();
             Users = new ObservableCollection<User>();
@@ -136,7 +136,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                             SentAt = sentAt
                         });
 
-                        // Falls du ein Refresh brauchst:
+                        // Optionales Refresh
                         if (SelectedChannel != null && SelectedChannel.Id == channelId)
                         {
                             var tmp = SelectedChannel;
@@ -178,27 +178,45 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             };
 
             // 3) Channels, DMs, Users per REST laden
+
+            // (A) Channels
             var channels = await _chatService.LoadChannels(new GetChannelsRequest(SessionStore.User.Id));
             if (channels != null)
             {
                 foreach (var c in channels)
                 {
-                    // Falls du ChatMessages-Collection brauchst:
-                    c.ChatMessages = new ObservableCollection<ChatMessageDto>();
                     OpenChats.Add(c);
                 }
             }
 
+            // (B) DMs
             var dms = await _chatService.LoadDirectChannels(new GetDirectChannelsRequest(SessionStore.User.Id));
             if (dms != null)
             {
-                foreach (var d in dms)
+                foreach (var dm in dms)
                 {
-                    d.ChatMessages = new ObservableCollection<ChatMessageDto>();
-                    DirectMessages.Add(d);
+                    // Hier benennen wir "Direktnachricht" in den Usernamen des Gegenübers um
+                    if (dm.IsDmChannel && dm.ChannelMembers != null)
+                    {
+                        var otherMember = dm.ChannelMembers
+                            .FirstOrDefault(m => m.UserId != SessionStore.User.Id);
+
+                        if (otherMember != null)
+                        {
+                            var otherUser = Users.FirstOrDefault(u => u.Id == otherMember.UserId);
+                            if (otherUser != null)
+                            {
+                                dm.Name = otherUser.Username;
+                            }
+                            // Wenn unknown, bleibt "Direktnachricht" oder du setzt was anderes
+                        }
+                    }
+
+                    DirectMessages.Add(dm);
                 }
             }
 
+            // (C) Users
             var allUsers = await _chatService.LoadAllUsers(new GetUsersRequest());
             if (allUsers != null)
             {
@@ -218,7 +236,6 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 
         private void ExecuteLogout()
         {
-            // Beispiel: LogoutService
             _loginService.Logout();
         }
 
@@ -245,7 +262,6 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             var dto = await _chatService.CreateNewChannel(req);
             if (dto != null)
             {
-                dto.ChatMessages = new ObservableCollection<ChatMessageDto>();
                 OpenChats.Add(dto);
                 ChannelClicked(dto);
             }
@@ -256,7 +272,6 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             if (SelectedChannel == null || string.IsNullOrWhiteSpace(NewMessage))
                 return;
 
-            // Hier holen wir die User-ID aus dem SessionStore
             int userId = SessionStore.User.Id;
             await _chatService.SendMessageSignalR(SelectedChannel.Id, userId, NewMessage);
             NewMessage = "";
@@ -275,21 +290,36 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         {
             if (user == null) return;
 
-            var chan = await _chatService.OpenChatWithUser(new OpenChatWithUserRequest(SessionStore.User.Id, user.Id));
+            // Server liefert Channel mit "Name=Direktnachricht" + ChannelMembers
+            var chan = await _chatService.OpenChatWithUser(new OpenChatWithUserRequest(
+                SessionStore.User.Id,
+                user.Id
+            ));
+
             if (chan != null)
             {
-                // Prüfen, ob dieser DM-Channel bereits existiert
+                // Benenne den Channel auf den angeklickten User um, 
+                // da wir genau wissen, dass "user" der andere ist.
+                if (chan.IsDmChannel)
+                {
+                    chan.Name = user.Username;
+                }
+
+                // Oder du könntest again ChannelMembers checken:
+                // var otherMember = chan.ChannelMembers.FirstOrDefault(m => m.UserId != SessionStore.User.Id);
+                // if (otherMember != null) { ... }
+
                 var existing = DirectMessages.FirstOrDefault(c => c.Id == chan.Id);
                 if (existing == null)
                 {
-                    chan.ChatMessages = new ObservableCollection<ChatMessageDto>();
-                    DirectMessages.Insert(0, chan);
+                    DirectMessages.Add(chan);
                 }
                 else
                 {
                     DirectMessages.Remove(existing);
-                    DirectMessages.Insert(0, existing);
+                    DirectMessages.Insert(0, chan);
                 }
+
                 ChannelClicked(chan);
             }
         }

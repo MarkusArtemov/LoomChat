@@ -191,6 +191,8 @@
     </ApplicationDefinition>
     <Compile Include="Commands\RelayCommand.cs" />
     <Compile Include="Converter\BoolToVisibilityConverter.cs" />
+    <Compile Include="Converter\MessageTemplateSelector.cs" />
+    <Compile Include="Converter\UserIdToNameConverter.cs" />
     <Compile Include="Global\SessionStore.cs" />
     <Compile Include="Services\ChatService.cs" />
     <Compile Include="Services\LoginService.cs" />
