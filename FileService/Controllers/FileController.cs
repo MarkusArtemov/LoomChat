@@ -6,9 +6,6 @@ using De.Hsfl.LoomChat.Common.Dtos;
 
 namespace De.Hsfl.LoomChat.File.Controllers
 {
-    /// <summary>
-    /// Handles file-related endpoints
-    /// </summary>
     [ApiController]
     [Route("[controller]")]
     [Authorize]
@@ -21,7 +18,6 @@ namespace De.Hsfl.LoomChat.File.Controllers
             _fileService = fileService;
         }
 
-
         private int GetCurrentUserId()
         {
             var userClaim = User.FindFirst("sub")
@@ -30,9 +26,6 @@ namespace De.Hsfl.LoomChat.File.Controllers
             return int.Parse(userClaim.Value);
         }
 
-        /// <summary>
-        /// Creates a new document
-        /// </summary>
         [HttpPost("create-document")]
         public async Task<ActionResult<DocumentResponse>> CreateDocument([FromBody] CreateDocumentRequest request)
         {
@@ -43,14 +36,10 @@ namespace De.Hsfl.LoomChat.File.Controllers
             if (currentUserId == 0)
                 return Unauthorized("No valid user token");
 
-       
             var docResponse = await _fileService.CreateDocumentAsync(request, currentUserId);
             return Ok(docResponse);
         }
 
-        /// <summary>
-        /// Uploads a new version for an existing document
-        /// </summary>
         [HttpPost("{documentId}/upload")]
         public async Task<ActionResult<DocumentVersionResponse>> UploadVersion(int documentId, IFormFile file)
         {
@@ -68,9 +57,6 @@ namespace De.Hsfl.LoomChat.File.Controllers
             return Ok(versionResponse);
         }
 
-        /// <summary>
-        /// Download a specific version
-        /// </summary>
         [HttpGet("{documentId}/version/{versionNumber}")]
         public async Task<IActionResult> DownloadVersion(int documentId, int versionNumber)
         {
@@ -78,12 +64,13 @@ namespace De.Hsfl.LoomChat.File.Controllers
             if (downloadResult == null)
                 return NotFound("File not found or version invalid");
 
-            return File(downloadResult.FileStream, downloadResult.ContentType, downloadResult.FileName);
+            return File(
+                downloadResult.FileStream,
+                downloadResult.ContentType,
+                downloadResult.FileName
+            );
         }
 
-        /// <summary>
-        /// Lists all versions of a document
-        /// </summary>
         [HttpGet("{documentId}/versions")]
         public async Task<ActionResult<List<DocumentVersionResponse>>> GetVersions(int documentId)
         {
@@ -91,9 +78,6 @@ namespace De.Hsfl.LoomChat.File.Controllers
             return Ok(versions);
         }
 
-        /// <summary>
-        /// Deletes a single version if it's not base for other versions
-        /// </summary>
         [HttpDelete("{documentId}/version/{versionNumber}")]
         public async Task<IActionResult> DeleteVersion(int documentId, int versionNumber)
         {
@@ -108,9 +92,6 @@ namespace De.Hsfl.LoomChat.File.Controllers
             return Ok("Version deleted");
         }
 
-        /// <summary>
-        /// Deletes all versions for a document
-        /// </summary>
         [HttpDelete("{documentId}/all-versions")]
         public async Task<IActionResult> DeleteAllVersions(int documentId)
         {
@@ -125,9 +106,6 @@ namespace De.Hsfl.LoomChat.File.Controllers
             return Ok("All versions deleted");
         }
 
-        /// <summary>
-        /// Lists all documents in a channel
-        /// </summary>
         [HttpGet("channel/{channelId}")]
         public async Task<ActionResult<List<DocumentResponse>>> GetDocumentsByChannel(int channelId)
         {

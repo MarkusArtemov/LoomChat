@@ -32,6 +32,7 @@ namespace De.Hsfl.LoomChat.File.Services
             };
             _context.Documents.Add(doc);
             await _context.SaveChangesAsync();
+
             return new DocumentResponse(
                 doc.Id,
                 doc.Name,
@@ -60,13 +61,20 @@ namespace De.Hsfl.LoomChat.File.Services
                 if (!string.IsNullOrWhiteSpace(extension) && extension != doc.FileExtension)
                     return null;
             }
-            doc.FileType = file.ContentType ?? "application/octet-stream";
+
+            var contentType = file.ContentType;
+            if (string.IsNullOrWhiteSpace(contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+            doc.FileType = contentType;
 
             int newVersionNumber = doc.DocumentVersions.Any()
                 ? doc.DocumentVersions.Max(v => v.VersionNumber) + 1
                 : 1;
 
             bool isFull = (newVersionNumber % 5 == 1);
+
             var docNameSafe = SanitizeFileName(doc.Name);
             var serverFileName = $"{docNameSafe}_v{newVersionNumber}{doc.FileExtension}";
             var fullPath = Path.Combine(_storageOptions.StoragePath, serverFileName);
@@ -76,6 +84,7 @@ namespace De.Hsfl.LoomChat.File.Services
             {
                 using var stream = new FileStream(fullPath, FileMode.Create);
                 await file.CopyToAsync(stream);
+
                 newVersion = new DocumentVersion
                 {
                     DocumentId = doc.Id,
@@ -136,11 +145,17 @@ namespace De.Hsfl.LoomChat.File.Services
             var doc = await _context.Documents.FindAsync(documentId);
             if (doc == null) return null;
 
+            if (string.IsNullOrWhiteSpace(doc.FileType))
+            {
+                doc.FileType = "application/octet-stream";
+            }
+
             var finalPath = await ReconstructFileAsync(documentId, versionNumber);
             if (finalPath == null || !global::System.IO.File.Exists(finalPath))
                 return null;
 
             var fileStream = new FileStream(finalPath, FileMode.Open, FileAccess.Read);
+
             var docNameSafe = SanitizeFileName(doc.Name);
             var finalFileName = $"{docNameSafe}_v{versionNumber}{doc.FileExtension}";
 
@@ -183,7 +198,8 @@ namespace De.Hsfl.LoomChat.File.Services
                 .FirstOrDefault(v => v.VersionNumber == versionNumber);
             if (version == null) return false;
 
-            bool isBaseForOthers = doc.DocumentVersions.Any(v => v.BaseVersionId == version.Id);
+            bool isBaseForOthers = doc.DocumentVersions
+                .Any(v => v.BaseVersionId == version.Id);
             if (isBaseForOthers) return false;
 
             _context.DocumentVersions.Remove(version);
@@ -238,6 +254,7 @@ namespace De.Hsfl.LoomChat.File.Services
             var version = await _context.DocumentVersions
                 .FirstOrDefaultAsync(v => v.DocumentId == documentId && v.VersionNumber == versionNumber);
             if (version == null) return null;
+
             if (version.IsFull) return version.StoragePath;
             if (!version.BaseVersionId.HasValue) return null;
 
@@ -246,7 +263,8 @@ namespace De.Hsfl.LoomChat.File.Services
             if (baseVersion == null) return null;
 
             var basePath = await ReconstructFileAsync(documentId, baseVersion.VersionNumber);
-            if (basePath == null || !global::System.IO.File.Exists(basePath)) return null;
+            if (basePath == null || !global::System.IO.File.Exists(basePath))
+                return null;
 
             var tempOut = Path.Combine(_storageOptions.StoragePath,
                 $"reconstruct_{documentId}_v{versionNumber}_{Guid.NewGuid()}.tmp");
