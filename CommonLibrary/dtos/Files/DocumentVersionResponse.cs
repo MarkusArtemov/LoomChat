@@ -2,22 +2,23 @@
 
 namespace De.Hsfl.LoomChat.Common.Dtos
 {
-    /// <summary>
-    /// Represents a single document version
-    /// </summary>
     public class DocumentVersionResponse
     {
-        public DocumentVersionResponse(int id, int documentId, int versionNumber, DateTime createdAt)
+        public int Id { get; }
+        public int DocumentId { get; }
+        public int VersionNumber { get; }
+        public DateTime CreatedAt { get; }
+        public string FileExtension { get; }
+        public string FileType { get; }
+
+        public DocumentVersionResponse(int id, int documentId, int versionNumber, DateTime createdAt, string fileExtension, string fileType)
         {
             Id = id;
             DocumentId = documentId;
             VersionNumber = versionNumber;
             CreatedAt = createdAt;
+            FileExtension = fileExtension;
+            FileType = fileType;
         }
-
-        public int Id { get; }
-        public int DocumentId { get; }
-        public int VersionNumber { get; }
-        public DateTime CreatedAt { get; }
     }
 }

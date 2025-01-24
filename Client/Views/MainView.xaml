@@ -5,11 +5,14 @@
       xmlns:converter="clr-namespace:De.Hsfl.LoomChat.Client.Converter"
       Title="MainView"
       Loaded="MainViewLoaded">
+
     <Page.DataContext>
         <local:MainViewModel />
     </Page.DataContext>
+
     <Page.Resources>
         <converter:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+
         <DataTemplate x:Key="MyMessageTemplate">
             <Border Background="#DCF8C6" Padding="10" Margin="10" CornerRadius="10" HorizontalAlignment="Right">
                 <StackPanel>
@@ -19,6 +22,7 @@
                 </StackPanel>
             </Border>
         </DataTemplate>
+
         <DataTemplate x:Key="OtherMessageTemplate">
             <Border Background="LightGray" Padding="10" Margin="10" CornerRadius="10" HorizontalAlignment="Left">
                 <StackPanel>
@@ -28,10 +32,12 @@
                 </StackPanel>
             </Border>
         </DataTemplate>
+
         <converter:MessageTemplateSelector x:Key="MessageTemplateSelector"
                                            MyMessageTemplate="{StaticResource MyMessageTemplate}"
                                            OtherMessageTemplate="{StaticResource OtherMessageTemplate}" />
     </Page.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="15*"/>
@@ -41,6 +47,7 @@
             <ColumnDefinition Width="20*"/>
             <ColumnDefinition Width="80*"/>
         </Grid.ColumnDefinitions>
+
         <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="10" Background="#E8E8E8">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -49,10 +56,14 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="LoomChat" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
                 <StackPanel Orientation="Horizontal" Grid.Column="1" VerticalAlignment="Center">
-                    <Button Content="Logout" Command="{Binding LogoutCommand}" Width="100" Height="30"/>
+                    <Button Content="Logout"
+                            Command="{Binding LogoutCommand}"
+                            Width="100"
+                            Height="30"/>
                 </StackPanel>
             </Grid>
         </Border>
+
         <Border Grid.Row="1" Grid.Column="0" Background="#F4F4F4" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
@@ -61,6 +72,7 @@
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
+
                 <GroupBox Grid.Row="0" Header="Direktnachrichten" Margin="0,0,0,10">
                     <ListView ItemsSource="{Binding DirectMessages}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -72,12 +84,14 @@
                         </ListView.ItemTemplate>
                     </ListView>
                 </GroupBox>
+
                 <Button Grid.Row="1"
                         Content="Channel erstellen"
                         Command="{Binding OpenPopupCommand}"
                         Width="120"
                         Height="30"
                         Margin="0,0,0,10"/>
+
                 <GroupBox Grid.Row="2" Header="Channels" Margin="0,0,0,10">
                     <ListView ItemsSource="{Binding OpenChats}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -89,6 +103,7 @@
                         </ListView.ItemTemplate>
                     </ListView>
                 </GroupBox>
+
                 <GroupBox Grid.Row="3" Header="User">
                     <ListView ItemsSource="{Binding Users}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -102,27 +117,44 @@
                 </GroupBox>
             </Grid>
         </Border>
+
         <Border Grid.Row="1" Grid.Column="1" Padding="10" Background="#F8F8F8">
             <TabControl>
                 <TabItem Header="Chat">
                     <Grid>
-                        <Grid x:Name="ChatGrid" Visibility="{Binding ChatVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid x:Name="ChatGrid"
+                              Visibility="{Binding ChatVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="*"/>
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
+
                             <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding SelectedChannel.ChatMessages}"
                                               ItemTemplateSelector="{StaticResource MessageTemplateSelector}"/>
                             </ScrollViewer>
+
                             <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
-                                <TextBox Text="{Binding NewMessage}" VerticalAlignment="Center" Width="500" Margin="0,0,10,0"/>
-                                <Button Content="Senden" Command="{Binding SendMessageCommand}" Width="100" Height="30"/>
+                                <TextBox Text="{Binding NewMessage}"
+                                         VerticalAlignment="Center"
+                                         Width="500"
+                                         Margin="0,0,10,0"/>
+                                <Button Content="Senden"
+                                        Command="{Binding SendMessageCommand}"
+                                        Width="100"
+                                        Height="30"/>
                             </StackPanel>
                         </Grid>
-                        <TextBlock Text="Bitte wähle einen Chat aus." HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" FontWeight="Bold" Visibility="{Binding IsChatNotVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                        <TextBlock Text="Bitte wähle einen Chat aus."
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   Visibility="{Binding IsChatNotVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
                     </Grid>
                 </TabItem>
+
                 <TabItem Header="Dateien">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -130,11 +162,19 @@
                             <RowDefinition Height="2*"/>
                             <RowDefinition Height="1*"/>
                         </Grid.RowDefinitions>
+
                         <StackPanel Orientation="Horizontal" Grid.Row="0">
-                            <Button Content="Neues Dokument" Command="{Binding CreateDocumentCommand}" Margin="0,0,10,0"/>
-                            <Button Content="Upload Version" Command="{Binding UploadVersionCommand}" Margin="0,0,10,0"/>
-                            <Button Content="Download Version" Command="{Binding DownloadVersionCommand}" Margin="0,0,10,0"/>
+                            <Button Content="Neues Dokument"
+                                    Command="{Binding CreateDocumentCommand}"
+                                    Margin="0,0,10,0"/>
+                            <Button Content="Upload Version"
+                                    Command="{Binding UploadVersionCommand}"
+                                    Margin="0,0,10,0"/>
+                            <Button Content="Download Version"
+                                    Command="{Binding DownloadVersionCommand}"
+                                    Margin="0,0,10,0"/>
                         </StackPanel>
+
                         <GroupBox Header="Dokumente" Grid.Row="1" Margin="0,5,0,5">
                             <ListView ItemsSource="{Binding Documents}"
                                       SelectedItem="{Binding SelectedDocument}"
@@ -146,6 +186,7 @@
                                 </ListView.ItemTemplate>
                             </ListView>
                         </GroupBox>
+
                         <GroupBox Header="Versionen" Grid.Row="2">
                             <ListView ItemsSource="{Binding Versions}"
                                       SelectedItem="{Binding SelectedVersion}"
@@ -154,9 +195,9 @@
                                     <DataTemplate>
                                         <TextBlock Text="Version: ">
                                             <TextBlock.Inlines>
-                                                <Run Text="{Binding VersionNumber}" />
+                                                <Run Text="{Binding VersionNumber, Mode=OneWay}" />
                                                 <Run Text=" | " />
-                                                <Run Text="{Binding CreatedAt, StringFormat=yyyy-MM-dd HH:mm:ss}" />
+                                                <Run Text="{Binding CreatedAt, Mode=OneWay, StringFormat=yyyy-MM-dd HH:mm:ss}" />
                                             </TextBlock.Inlines>
                                         </TextBlock>
                                     </DataTemplate>
@@ -167,17 +208,31 @@
                 </TabItem>
             </TabControl>
         </Border>
+
         <Popup x:Name="CreateChannelPopup"
                Placement="Center"
                IsOpen="{Binding PopupOpen}"
                StaysOpen="False">
-            <Border Background="White" BorderBrush="Gray" BorderThickness="1" Padding="20" Width="300">
+            <Border Background="White"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    Padding="20"
+                    Width="300">
                 <StackPanel>
-                    <TextBlock Text="Neuen Channel erstellen" FontSize="16" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <TextBlock Text="Neuen Channel erstellen"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Margin="0,0,0,10"/>
                     <TextBox Text="{Binding NewChannelName}" Width="300" Margin="0,0,0,10"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="Abbrechen" Command="{Binding ClosePopupCommand}" Width="80" Margin="5"/>
-                        <Button Content="Erstellen" Command="{Binding CreateChannelCommand}" Width="80" Margin="5"/>
+                        <Button Content="Abbrechen"
+                                Command="{Binding ClosePopupCommand}"
+                                Width="80"
+                                Margin="5"/>
+                        <Button Content="Erstellen"
+                                Command="{Binding CreateChannelCommand}"
+                                Width="80"
+                                Margin="5"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

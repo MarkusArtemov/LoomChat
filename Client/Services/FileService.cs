@@ -198,7 +198,6 @@ namespace De.Hsfl.LoomChat.Client.Services
             }
         }
 
-
         public async Task<bool> DownloadVersionAsync(int documentId, int versionNumber)
         {
             using (var client = CreateHttpClient())
@@ -214,7 +213,6 @@ namespace De.Hsfl.LoomChat.Client.Services
                     }
                     var contentDisposition = response.Content.Headers.ContentDisposition;
                     var fileName = contentDisposition?.FileNameStar ?? "download.bin";
-
                     var sfd = new SaveFileDialog
                     {
                         FileName = fileName

@@ -47,7 +47,6 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 OnPropertyChanged(nameof(IsChatNotVisible));
             }
         }
-
         public bool IsChatNotVisible => !ChatVisible;
 
         private string _newMessage;
@@ -122,6 +121,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         {
             _loginService = new LoginService();
             _chatService = new ChatService();
+
             OpenChats = new ObservableCollection<ChannelDto>();
             DirectMessages = new ObservableCollection<ChannelDto>();
             Users = new ObservableCollection<User>();
@@ -152,6 +152,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 return;
             }
             await _chatService.InitializeSignalRAsync(jwt);
+
             _fileService = new FileService("http://localhost:5277", jwt);
 
             _chatService.OnMessageReceived += (channelId, senderUserId, senderName, content, sentAt) =>
@@ -174,6 +175,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                     }
                 });
             };
+
             _chatService.OnChannelHistoryReceived += (channelId, msgList) =>
             {
                 Application.Current.Dispatcher.Invoke(() =>
@@ -197,6 +199,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                     }
                 });
             };
+
             var channels = await _chatService.LoadChannels(new GetChannelsRequest(SessionStore.User.Id));
             if (channels != null)
             {
@@ -206,6 +209,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                     OpenChats.Add(c);
                 }
             }
+
             var dms = await _chatService.LoadDirectChannels(new GetDirectChannelsRequest(SessionStore.User.Id));
             if (dms != null)
             {
@@ -215,6 +219,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                     DirectMessages.Add(d);
                 }
             }
+
             var userList = await _chatService.LoadAllUsers(new GetUsersRequest());
             if (userList != null)
             {
@@ -227,8 +232,9 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 
         private ChannelDto FindChannel(int channelId)
         {
-            return OpenChats.FirstOrDefault(x => x.Id == channelId)
+            var c = OpenChats.FirstOrDefault(x => x.Id == channelId)
                 ?? DirectMessages.FirstOrDefault(x => x.Id == channelId);
+            return c;
         }
 
         private void ExecuteLogout()
