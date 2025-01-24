@@ -1,85 +1,20 @@
-<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{BB264BBF-EF33-46ED-981B-DE2FA84006B2}</ProjectGuid>
+    <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>De.Hsfl.LoomChat.Common</RootNamespace>
     <AssemblyName>De.Hsfl.LoomChat.Common</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
-    <TargetFrameworkProfile />
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
-    <DefineConstants>DEBUG;TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <DefineConstants>TRACE</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-  </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Xml.Linq" />
-    <Reference Include="System.Data.DataSetExtensions" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Data" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Xml" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Dtos\Chats\ArchiveChannelRequest.cs" />
-    <Compile Include="Dtos\Chats\ChannelDetailsResponse.cs" />
-    <Compile Include="Dtos\Chats\ChannelDto.cs" />
-    <Compile Include="Dtos\Chats\ChannelMemberDto.cs" />
-    <Compile Include="Dtos\Chats\ChannelMemberResponse.cs" />
-    <Compile Include="Dtos\Chats\ChannelResponse.cs" />
-    <Compile Include="Dtos\Chats\ChatMessageDto.cs" />
-    <Compile Include="Dtos\Chats\ChatMessageResponse.cs" />
-    <Compile Include="Dtos\Chats\CreateChannelRequest.cs" />
-    <Compile Include="Dtos\Chats\CreateChannelResponse.cs" />
-    <Compile Include="Dtos\Chats\GetChannelsRequest.cs" />
-    <Compile Include="Dtos\Chats\GetChannelsResponse.cs" />
-    <Compile Include="Dtos\Chats\GetDirectChannelsRequest.cs" />
-    <Compile Include="Dtos\Chats\GetDirectChannelsResponse.cs" />
-    <Compile Include="Dtos\Chats\GetUsersRequest.cs" />
-    <Compile Include="Dtos\Chats\GetUsersResponse.cs" />
-    <Compile Include="Dtos\Auth\LoginRequest.cs" />
-    <Compile Include="Dtos\Auth\LoginResponse.cs" />
-    <Compile Include="Dtos\Chats\JoinChannelRequest.cs" />
-    <Compile Include="Dtos\Chats\LeaveChannelRequest.cs" />
-    <Compile Include="Dtos\Chats\OpenChatWithUserRequest.cs" />
-    <Compile Include="Dtos\Chats\OpenChatWithUserResponse.cs" />
-    <Compile Include="Dtos\Auth\RegisterRequest.cs" />
-    <Compile Include="Dtos\Auth\RegisterResponse.cs" />
-    <Compile Include="Dtos\Chats\SendMessageRequest.cs" />
-    <Compile Include="Dtos\Chats\SendMessageResponse.cs" />
-    <Compile Include="Dtos\Files\CreateDocumentRequest.cs" />
-    <Compile Include="Dtos\Files\DocumentResponse.cs" />
-    <Compile Include="Dtos\Files\DocumentVersionResponse.cs" />
-    <Compile Include="Enums\ChannelRole.cs" />
-    <Compile Include="Models\Channel.cs" />
-    <Compile Include="Models\ChannelMember.cs" />
-    <Compile Include="Models\ChatMessage.cs" />
-    <Compile Include="Models\User.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-  </ItemGroup>
   <ItemGroup>
     <Folder Include="Utils\" />
   </ItemGroup>
-  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="dtos\CreateDocumentRequest.cs" />
+    <Compile Remove="dtos\DocumentResponse.cs" />
+    <Compile Remove="dtos\DocumentVersionResponse.cs" />
+  </ItemGroup>
 </Project>
