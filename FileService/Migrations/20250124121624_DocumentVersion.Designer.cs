@@ -3,6 +3,7 @@ using System;
 using De.Hsfl.LoomChat.File.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace De.Hsfl.LoomChat.File.Migrations
 {
     [DbContext(typeof(FileDbContext))]
-    partial class FileDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250124121624_DocumentVersion")]
+    partial class DocumentVersion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -42,18 +45,20 @@ namespace De.Hsfl.LoomChat.File.Migrations
 
                     b.Property<string>("FileType")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<int>("OwnerUserId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Documents");
+                    b.ToTable("Documents", (string)null);
                 });
 
             modelBuilder.Entity("De.Hsfl.LoomChat.File.Models.DocumentVersion", b =>
@@ -64,15 +69,25 @@ namespace De.Hsfl.LoomChat.File.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BaseVersionId")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("DocumentId")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsFull")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("StoragePath")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<int?>("UploaderUserId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("VersionNumber")
                         .HasColumnType("integer");
@@ -81,7 +96,7 @@ namespace De.Hsfl.LoomChat.File.Migrations
 
                     b.HasIndex("DocumentId");
 
-                    b.ToTable("DocumentVersions");
+                    b.ToTable("DocumentVersions", (string)null);
                 });
 
             modelBuilder.Entity("De.Hsfl.LoomChat.File.Models.DocumentVersion", b =>

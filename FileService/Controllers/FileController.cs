@@ -32,12 +32,11 @@ namespace De.Hsfl.LoomChat.File.Controllers
             if (request == null)
                 return BadRequest("No data provided");
 
-            int currentUserId = GetCurrentUserId();
-            if (currentUserId == 0)
-                return Unauthorized("No valid user token");
+            var userId = GetCurrentUserId();
+            if (userId == 0) return Unauthorized();
 
-            var docResponse = await _fileService.CreateDocumentAsync(request, currentUserId);
-            return Ok(docResponse);
+            var doc = await _fileService.CreateDocumentAsync(request, userId);
+            return Ok(doc);
         }
 
         [HttpPost("{documentId}/upload")]
@@ -46,15 +45,28 @@ namespace De.Hsfl.LoomChat.File.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
-            int currentUserId = GetCurrentUserId();
-            if (currentUserId == 0)
-                return Unauthorized("No valid user token");
+            var userId = GetCurrentUserId();
+            if (userId == 0) return Unauthorized();
 
-            var versionResponse = await _fileService.UploadDocumentVersionAsync(documentId, file, currentUserId);
-            if (versionResponse == null)
-                return NotFound("Document not found, not owner, or upload failed");
+            var version = await _fileService.UploadDocumentVersionAsync(documentId, file, userId);
+            if (version == null)
+                return NotFound("Document not found or not owner, or extension mismatch");
 
-            return Ok(versionResponse);
+            return Ok(version);
+        }
+
+        [HttpGet("channel/{channelId}")]
+        public async Task<ActionResult<List<DocumentResponse>>> GetDocsByChannel(int channelId)
+        {
+            var docs = await _fileService.GetDocumentsByChannelAsync(channelId);
+            return Ok(docs);
+        }
+
+        [HttpGet("{documentId}/versions")]
+        public async Task<ActionResult<List<DocumentVersionResponse>>> GetVersions(int documentId)
+        {
+            var vers = await _fileService.GetDocumentVersionsAsync(documentId);
+            return Ok(vers);
         }
 
         [HttpGet("{documentId}/version/{versionNumber}")]
@@ -62,7 +74,7 @@ namespace De.Hsfl.LoomChat.File.Controllers
         {
             var downloadResult = await _fileService.DownloadDocumentVersionAsync(documentId, versionNumber);
             if (downloadResult == null)
-                return NotFound("File not found or version invalid");
+                return NotFound("Document or version not found");
 
             return File(
                 downloadResult.FileStream,
@@ -71,46 +83,36 @@ namespace De.Hsfl.LoomChat.File.Controllers
             );
         }
 
-        [HttpGet("{documentId}/versions")]
-        public async Task<ActionResult<List<DocumentVersionResponse>>> GetVersions(int documentId)
+        // ------------------------------------------------
+        // DELETE Document => + versions => broadcast
+        // ------------------------------------------------
+        [HttpDelete("{documentId}")]
+        public async Task<IActionResult> DeleteDocument(int documentId)
         {
-            var versions = await _fileService.GetDocumentVersionsAsync(documentId);
-            return Ok(versions);
+            var userId = GetCurrentUserId();
+            if (userId == 0) return Unauthorized();
+
+            var success = await _fileService.DeleteDocumentAsync(documentId, userId);
+            if (!success)
+                return BadRequest("Couldn't delete doc (not found or not owner)");
+
+            return Ok("Document deleted");
         }
 
+        // ------------------------------------------------
+        // DELETE a single version => broadcast
+        // ------------------------------------------------
         [HttpDelete("{documentId}/version/{versionNumber}")]
         public async Task<IActionResult> DeleteVersion(int documentId, int versionNumber)
         {
-            int currentUserId = GetCurrentUserId();
-            if (currentUserId == 0)
-                return Unauthorized("No valid user token");
+            var userId = GetCurrentUserId();
+            if (userId == 0) return Unauthorized();
 
-            var success = await _fileService.DeleteVersionAsync(documentId, versionNumber, currentUserId);
+            var success = await _fileService.DeleteVersionAsync(documentId, versionNumber, userId);
             if (!success)
-                return BadRequest("Could not delete version (maybe used as base, or not owner)");
+                return BadRequest("Couldn't delete version (not found or not owner)");
 
             return Ok("Version deleted");
-        }
-
-        [HttpDelete("{documentId}/all-versions")]
-        public async Task<IActionResult> DeleteAllVersions(int documentId)
-        {
-            int currentUserId = GetCurrentUserId();
-            if (currentUserId == 0)
-                return Unauthorized("No valid user token");
-
-            var success = await _fileService.DeleteAllVersionsAsync(documentId, currentUserId);
-            if (!success)
-                return BadRequest("Could not delete all versions (doc not found or not owner)");
-
-            return Ok("All versions deleted");
-        }
-
-        [HttpGet("channel/{channelId}")]
-        public async Task<ActionResult<List<DocumentResponse>>> GetDocumentsByChannel(int channelId)
-        {
-            var docs = await _fileService.GetDocumentsByChannelAsync(channelId);
-            return Ok(docs);
         }
     }
 }
