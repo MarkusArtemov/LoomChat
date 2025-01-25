@@ -165,7 +165,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 
             await _chatService.InitializeSignalRAsync(jwt);
 
-            _fileService = new FileService("http://localhost:5277", jwt);
+            _fileService = new FileService("http://localhost", jwt);
             await _fileService.InitializeFileHubAsync();
 
             _fileService.OnDocumentCreated += doc =>

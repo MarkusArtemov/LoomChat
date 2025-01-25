@@ -2,12 +2,13 @@ using System.Text;
 using De.Hsfl.LoomChat.File.Persistence;
 using De.Hsfl.LoomChat.File.Options;
 using De.Hsfl.LoomChat.File.Services;
-using De.Hsfl.LoomChat.File.Hubs; // <-- Wichtig für FileHub
+using De.Hsfl.LoomChat.File.Hubs; // <-- Wichtig fï¿½r FileHub
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.SignalR; // SignalR
 using Serilog;
+using De.Hsfl.LoomChat.Common.dtos;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,7 +62,7 @@ builder.Services.AddScoped<FileService>();
 
 var app = builder.Build();
 
-// --- ggf. Migrationen automatisiert anstoßen ---
+// --- ggf. Migrationen automatisiert anstoï¿½en ---
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FileDbContext>();
@@ -84,7 +85,10 @@ app.UseAuthorization();
 // --- Mappe Controller-Routen ---
 app.MapControllers();
 
-// --- Mappe den FileHub für Echtzeit-Kommunikation ---
+// --- Mappe den FileHub fï¿½r Echtzeit-Kommunikation ---
 app.MapHub<FileHub>("/fileHub");
+// Weil SignalR und nginx nicht funktionert haben
+int publicPort = int.Parse(Environment.GetEnvironmentVariable("PUBLIC_PORT") ?? "8080");
+app.MapGet("/port", () => Results.Ok(new PortResponse(publicPort)));
 
 app.Run();
