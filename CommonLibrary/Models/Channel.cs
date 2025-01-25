@@ -13,5 +13,7 @@ namespace De.Hsfl.LoomChat.Common.Models
         public ICollection<ChannelMember> ChannelMembers { get; set; } = new List<ChannelMember>();
 
         public ICollection<ChatMessage> ChatMessages { get; set; } = new List<ChatMessage>();
+
+        public ICollection<Poll> Polls { get; set; } = new List<Poll>();
     }
 }
