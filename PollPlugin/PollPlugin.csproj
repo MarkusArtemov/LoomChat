@@ -6,6 +6,9 @@
     <Nullable>enable</Nullable>
     <AssemblyName>De.Hsfl.LoomChat.PollPlugin</AssemblyName>
     <RootNamespace>De.Hsfl.LoomChat.PollPlugin</RootNamespace>
+
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\keys\MyPluginKey.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +17,13 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CommonLibrary\CommonLibrary.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Keys\MyPluginKey.snk">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </None>
   </ItemGroup>
 
 </Project>
