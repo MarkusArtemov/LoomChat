@@ -15,6 +15,7 @@ using De.Hsfl.LoomChat.Chat.Persistence;
 using De.Hsfl.LoomChat.Chat.Services;
 using De.Hsfl.LoomChat.Chat.Hubs;
 using De.Hsfl.LoomChat.Chat.Mappings;
+using De.Hsfl.LoomChat.Common.dtos;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -79,7 +80,7 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Automatisch Migrationen ausführen
+// Automatisch Migrationen ausfï¿½hren
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
@@ -90,8 +91,8 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
-    // app.UseSwagger();
-    // app.UseSwaggerUI();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 app.UseHttpsRedirection();
@@ -101,5 +102,9 @@ app.MapControllers();
 
 // Map SignalR Hub
 app.MapHub<ChatHub>("/chatHub");
+
+// Weil SIgnalR mit nginx nicht funktioniert hat
+int publicPort = int.Parse(Environment.GetEnvironmentVariable("PUBLIC_PORT") ?? "8080");
+app.MapGet("/port", () => Results.Ok(new PortResponse(publicPort)));
 
 app.Run();

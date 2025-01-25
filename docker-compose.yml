@@ -24,8 +24,8 @@ services:
 
   authservice2:
     build:
-      context: ./AuthService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: AuthService/Dockerfile
     ports:
       - "5233:8080"
     depends_on:
@@ -36,52 +36,56 @@ services:
 
   chatservice1:
     build:
-      context: ./ChatService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ChatService/Dockerfile
     ports:
       - "5115:8080"
     depends_on:
       - postgres
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - PUBLIC_PORT=5115
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=chatdb;Username=postgres;Password=secret
 
   chatservice2:
     build:
-      context: ./ChatService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ChatService/Dockerfile
     ports:
       - "5116:8080"
     depends_on:
       - postgres
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - PUBLIC_PORT=5116
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=chatdb;Username=postgres;Password=secret
 
   fileservice1:
     build:
-      context: ./FileService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: FileService/Dockerfile
     ports:
       - "5277:8080"
     depends_on:
       - postgres
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - PUBLIC_PORT=5277
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=filedb;Username=postgres;Password=secret
     volumes:
       - ./data:/app/data
 
   fileservice2:
     build:
-      context: ./FileService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: FileService/Dockerfile
     ports:
       - "5278:8080"
     depends_on:
       - postgres
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - PUBLIC_PORT=5278
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=filedb;Username=postgres;Password=secret
     volumes:
       - ./data:/app/data

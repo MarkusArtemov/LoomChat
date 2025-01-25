@@ -9,6 +9,7 @@ using Microsoft.Win32;
 using Newtonsoft.Json;
 using System.Windows;
 using De.Hsfl.LoomChat.Common.Dtos;
+using De.Hsfl.LoomChat.Common.dtos;
 
 namespace De.Hsfl.LoomChat.Client.Services
 {
@@ -33,8 +34,10 @@ namespace De.Hsfl.LoomChat.Client.Services
         // -------------------------------------
         public async Task InitializeFileHubAsync()
         {
-            var hubUrl = $"{_baseUrl}/fileHub";
 
+            
+            int port = await GetFileServicePort();
+            var hubUrl = $"{_baseUrl}:{port}/fileHub";
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl(hubUrl, options =>
                 {
@@ -53,6 +56,48 @@ namespace De.Hsfl.LoomChat.Client.Services
             });
 
             await _hubConnection.StartAsync();
+        }
+
+        private async Task<int> GetFileServicePort()
+        {
+            using (var client = CreateHttpClientWithAuth())
+            {
+                try
+                {
+                    var url = "http://localhost/file/port";
+                    var response = await client.GetAsync(url);
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        MessageBox.Show("Fehler beim Port-Fetch. HTTP-" + response.StatusCode);
+                        return 0;
+                    }
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    var portResponse = JsonConvert.DeserializeObject<PortResponse>(responseBody);
+                    if (portResponse == null)
+                    {
+                        MessageBox.Show("Port-Antwort war leer oder ungültig!");
+                        return 0;
+                    }
+                    return portResponse.Port;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Fehler beim Fetchen des Chat-Ports: {ex.Message}");
+                    return 0;
+                }
+            }
+        }
+
+        private HttpClient CreateHttpClientWithAuth()
+        {
+            var client = new HttpClient();
+            if (!string.IsNullOrWhiteSpace(_jwtToken))
+            {
+                // Standard Bearer header
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", _jwtToken);
+            }
+            return client;
         }
 
         public async Task JoinFileChannel(int channelId)
@@ -81,7 +126,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = $"{_baseUrl}/File/channel/{channelId}";
+                    var url = $"{_baseUrl}/file/File/channel/{channelId}";
                     var response = await client.GetAsync(url);
                     if (!response.IsSuccessStatusCode) return null;
 
@@ -103,7 +148,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = $"{_baseUrl}/File/{documentId}/versions";
+                    var url = $"{_baseUrl}/file/File/{documentId}/versions";
                     var response = await client.GetAsync(url);
                     if (!response.IsSuccessStatusCode) return null;
 
@@ -125,7 +170,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = $"{_baseUrl}/File/create-document";
+                    var url = $"{_baseUrl}/file/File/create-document";
                     var json = JsonConvert.SerializeObject(request);
                     var jsonContent = new StringContent(json, Encoding.UTF8, "application/json");
                     var response = await client.PostAsync(url, jsonContent);
@@ -154,7 +199,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = $"{_baseUrl}/File/{documentId}/upload";
+                    var url = $"{_baseUrl}/file/File/{documentId}/upload";
                     using (var content = new MultipartFormDataContent())
                     {
                         using (var fileStream = System.IO.File.OpenRead(filePath))
@@ -208,7 +253,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = $"{_baseUrl}/File/{doc.Id}/upload";
+                    var url = $"{_baseUrl}/file/File/{doc.Id}/upload";
                     using (var content = new MultipartFormDataContent())
                     {
                         using (var fileStream = System.IO.File.OpenRead(filePath))
@@ -252,7 +297,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = $"{_baseUrl}/File/{documentId}/version/{versionNumber}";
+                    var url = $"{_baseUrl}/file/File/{documentId}/version/{versionNumber}";
                     var response = await client.GetAsync(url);
                     if (!response.IsSuccessStatusCode)
                     {
@@ -286,7 +331,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = $"{_baseUrl}/File/{documentId}/version/{versionNumber}";
+                    var url = $"{_baseUrl}/file/File/{documentId}/version/{versionNumber}";
                     var response = await client.DeleteAsync(url);
                     if (!response.IsSuccessStatusCode)
                     {
@@ -310,7 +355,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = $"{_baseUrl}/File/{documentId}";
+                    var url = $"{_baseUrl}/file/File/{documentId}";
                     var response = await client.DeleteAsync(url);
                     if (!response.IsSuccessStatusCode)
                     {
