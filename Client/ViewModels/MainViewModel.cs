@@ -216,6 +216,8 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             };
 
             // ChatService-Ereignisse
+
+            // (A) Neues Chat-Message-Event
             _chatService.OnMessageReceived += (channelId, senderUserId, senderName, content, sentAt) =>
             {
                 Application.Current.Dispatcher.Invoke(() =>
@@ -233,17 +235,20 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                         };
                         ch.ChatMessages.Add(msg);
 
-                        // Sort
-                        ch.ChatMessages = new ObservableCollection<ChatMessageDto>(
-                            ch.ChatMessages.OrderBy(m => m.SentAt)
-                        );
+                        // Neu: in-place sortieren, NICHT neu zuweisen!
+                        var sorted = ch.ChatMessages.OrderBy(m => m.SentAt).ToList();
+                        ch.ChatMessages.Clear();
+                        foreach (var m in sorted)
+                        {
+                            ch.ChatMessages.Add(m);
+                        }
                     }
                 });
             };
 
+            // (B) ChannelHistory => Liste von ChatMessageDto
             _chatService.OnChannelHistoryReceived += (channelId, msgList) =>
             {
-                // hier msgList => List<ChatMessageDto>
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     var ch = FindChannel(channelId);
@@ -442,6 +447,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         }
 
         // ========== PollPlugin ==========
+
         private async void ExecuteLoadPollPlugin()
         {
             try
@@ -616,12 +622,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                     return;
                 }
 
-                // Title oder PollId => hier Title
                 await _pollPlugin.Vote(pollMsg.PollTitle, chosenOption);
-
-                // => Du könntest pollMsg.HasUserVoted = true setzen, 
-                //    falls du das UI umschalten möchtest
-                // pollMsg.HasUserVoted = true;
 
                 MessageBox.Show($"Vote abgegeben für '{chosenOption}'!");
             }

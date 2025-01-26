@@ -6,10 +6,9 @@ using System.Windows.Data;
 namespace De.Hsfl.LoomChat.Client.Converter
 {
     /// <summary>
-    /// Zeigt Visible, wenn
-    ///   - IsClosed == true  ODER
-    ///   - HasUserVoted == true
-    /// => Wir kriegen 2 bool-Werte in values[0..1].
+    /// Zeigt Visible, wenn 
+    ///   - IsClosed == false UND
+    ///   - HasUserVoted == false
     /// </summary>
     public class PollResultsVisibilityConverter : IMultiValueConverter
     {
@@ -19,12 +18,10 @@ namespace De.Hsfl.LoomChat.Client.Converter
 
             // 0 => IsClosed
             // 1 => HasUserVoted
-            if (values[0] is bool isClosed && isClosed)
-                return Visibility.Visible;
-            if (values[1] is bool hasVoted && hasVoted)
-                return Visibility.Visible;
+            if (values[0] is bool isClosed && isClosed) return Visibility.Collapsed;
+            if (values[1] is bool hasVoted && hasVoted) return Visibility.Collapsed;
 
-            return Visibility.Collapsed;
+            return Visibility.Visible;
         }
 
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
