@@ -202,6 +202,8 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             // File-Ereignisse
             _fileService.OnDocumentCreated += doc =>
             {
+                // Falls wir im richtigen Channel sind
+                // oder wir die Doku in dem Channel-Objekt pflegen wollen:
                 if (doc.ChannelId == SelectedChannel?.Id)
                 {
                     Application.Current.Dispatcher.Invoke(() => Documents.Add(doc));
@@ -216,7 +218,6 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             };
 
             // ChatService-Ereignisse
-
             // (A) Neues Chat-Message-Event
             _chatService.OnMessageReceived += (channelId, senderUserId, senderName, content, sentAt) =>
             {
@@ -235,7 +236,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                         };
                         ch.ChatMessages.Add(msg);
 
-                        // Neu: in-place sortieren, NICHT neu zuweisen!
+                        // Neu: sortieren
                         var sorted = ch.ChatMessages.OrderBy(m => m.SentAt).ToList();
                         ch.ChatMessages.Clear();
                         foreach (var m in sorted)
@@ -471,17 +472,28 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        if (SelectedChannel == null) return;
-                        var pollMsg = new ChatMessageDto
+                        // Normalerweise bräuchten wir den ChannelId,
+                        // um zu wissen, in welchem Channel diese Poll entstanden ist.
+                        // Demo: Wir gehen davon aus, dass die PollMessage über "ChatHub" o.ä.
+                        //       als ChatMessageDto ankommt. 
+                        // Falls du es hier manuell hinzufügen willst,
+                        // müsstest du ChannelId ebenfalls vom PluginEvent bekommen
+                        // oder abfragen. 
+
+                        // Beispiellogik nur, wenn user im Channel ist:
+                        if (SelectedChannel != null)
                         {
-                            ChannelId = SelectedChannel.Id,
-                            SenderUserId = SessionStore.User.Id,
-                            SentAt = DateTime.Now,
-                            Type = MessageType.Poll,
-                            PollTitle = title,
-                            PollOptions = options.ToList()
-                        };
-                        SelectedChannel.ChatMessages.Add(pollMsg);
+                            var pollMsg = new ChatMessageDto
+                            {
+                                ChannelId = SelectedChannel.Id,
+                                SenderUserId = SessionStore.User.Id,
+                                SentAt = DateTime.Now,
+                                Type = MessageType.Poll,
+                                PollTitle = title,
+                                PollOptions = options.ToList()
+                            };
+                            SelectedChannel.ChatMessages.Add(pollMsg);
+                        }
                     });
                 };
 
@@ -490,9 +502,8 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        if (SelectedChannel == null) return;
-                        var pollMsg = SelectedChannel.ChatMessages
-                            .FirstOrDefault(m => m.Type == MessageType.Poll && m.PollTitle == title);
+                        // Suche die PollMessage in *allen* Channels, nicht nur SelectedChannel:
+                        var pollMsg = FindPollMessageInAllChannels(title);
                         if (pollMsg != null)
                         {
                             var newList = new List<string>();
@@ -510,9 +521,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        if (SelectedChannel == null) return;
-                        var pollMsg = SelectedChannel.ChatMessages
-                            .FirstOrDefault(m => m.Type == MessageType.Poll && m.PollTitle == title);
+                        var pollMsg = FindPollMessageInAllChannels(title);
                         if (pollMsg != null)
                         {
                             pollMsg.IsClosed = true;
@@ -525,12 +534,15 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
-                        if (SelectedChannel == null) return;
-                        var pollMsg = SelectedChannel.ChatMessages
-                            .FirstOrDefault(m => m.Type == MessageType.Poll && m.PollTitle == title);
-                        if (pollMsg != null)
+                        var pollMsg = FindPollMessageInAllChannels(title);
+                        if (pollMsg != null && pollMsg.ChannelId != 0)
                         {
-                            SelectedChannel.ChatMessages.Remove(pollMsg);
+                            // Finde den Channel, damit wir sie dort entfernen
+                            var channelDto = FindChannel(pollMsg.ChannelId);
+                            if (channelDto != null)
+                            {
+                                channelDto.ChatMessages.Remove(pollMsg);
+                            }
                         }
                     });
                 };
@@ -542,6 +554,22 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             {
                 MessageBox.Show($"Fehler beim Laden des Plugins: {ex.Message}");
             }
+        }
+
+        private ChatMessageDto FindPollMessageInAllChannels(string pollTitle)
+        {
+            // 1) Alle channels = OpenChats + DirectMessages
+            // 2) ChatMessages filtern => Type=Poll & PollTitle = pollTitle
+            // 3) FirstOrDefault => Falls mehrere -> nimm erste
+            var allChannels = OpenChats.Concat(DirectMessages);
+            foreach (var chan in allChannels)
+            {
+                var msg = chan.ChatMessages
+                    .FirstOrDefault(m => m.Type == MessageType.Poll && m.PollTitle == pollTitle);
+                if (msg != null)
+                    return msg;
+            }
+            return null;
         }
 
         private void ExecuteOpenPollPopup()
@@ -605,6 +633,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 MessageBox.Show("PollPlugin nicht geladen!");
                 return;
             }
+
             string chosenOption = param as string;
             if (string.IsNullOrWhiteSpace(chosenOption))
             {
@@ -614,16 +643,25 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 
             try
             {
+                // Im aktuell ausgewählten Channel die Poll suchen
                 var pollMsg = SelectedChannel?.ChatMessages
                     .FirstOrDefault(m => m.Type == MessageType.Poll && !m.IsClosed);
+
                 if (pollMsg == null)
                 {
                     MessageBox.Show("Keine offene Umfrage gefunden.");
                     return;
                 }
 
+                // 1) Vote an den Server
                 await _pollPlugin.Vote(pollMsg.PollTitle, chosenOption);
 
+                // 2) Nach erfolgreichem Vote => UI umschalten
+                //    HasUserVoted = true => VotingPanel verschwindet,
+                //    stattdessen erscheinen die Ergebnisse
+                pollMsg.HasUserVoted = true;
+
+                // Optional: MessageBox zur Bestätigung
                 MessageBox.Show($"Vote abgegeben für '{chosenOption}'!");
             }
             catch (Exception ex)
@@ -631,6 +669,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 MessageBox.Show("Fehler bei VotePoll: " + ex.Message);
             }
         }
+
 
         private async void ExecuteClosePoll()
         {
@@ -677,6 +716,8 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 
                 await _pollPlugin.DeletePoll(pollMsg.PollTitle);
                 MessageBox.Show("Umfrage gelöscht!");
+
+                // Lokal entfernen (können wir; oder wir warten aufs "PollDeleted" Event)
                 SelectedChannel.ChatMessages.Remove(pollMsg);
             }
             catch (Exception ex)

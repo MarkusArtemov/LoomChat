@@ -76,27 +76,50 @@
                                Margin="0,0,0,5"
                                FontWeight="Bold"/>
 
-                    <!-- Liste der Optionen: RadioButtons in einer ListBox (Single Selection) -->
-                    <ListBox x:Name="OptionList"
-                             ItemsSource="{Binding PollOptions}"
-                             SelectionMode="Single"
-                             Margin="0,5,0,0">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <!-- Jeder Eintrag wird als RadioButton dargestellt -->
-                                <RadioButton Content="{Binding}"
-                                             Margin="5,0"
-                                             IsChecked="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected, Mode=TwoWay}" />
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <!-- Abstimm-Bereich (nur sichtbar, solange HasUserVoted=false und IsClosed=false) -->
+                    <StackPanel x:Name="VotingPanel">
+                        <!-- Liste der Optionen: RadioButtons in einer ListBox (Single Selection) -->
+                        <ListBox x:Name="OptionList"
+                                 ItemsSource="{Binding PollOptions}"
+                                 SelectionMode="Single"
+                                 Margin="0,5,0,0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <!-- Jeder Eintrag wird als RadioButton dargestellt -->
+                                    <RadioButton Content="{Binding}"
+                                                 Margin="5,0"
+                                                 IsChecked="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected, Mode=TwoWay}" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
 
-                    <!-- Button: Verweis auf den Page-DataContext -->
-                    <Button Content="Vote"
-                            Margin="0,5,0,0"
-                            Command="{Binding DataContext.VotePollCommand,
-                                      RelativeSource={RelativeSource AncestorType=Page}}"
-                            CommandParameter="{Binding SelectedItem, ElementName=OptionList}" />
+                        <!-- Vote-Button: Verweis auf den Page-DataContext -->
+                        <Button Content="Vote"
+                                Margin="0,5,0,0"
+                                Command="{Binding DataContext.VotePollCommand,
+                                          RelativeSource={RelativeSource AncestorType=Page}}"
+                                CommandParameter="{Binding SelectedItem, ElementName=OptionList}" />
+                    </StackPanel>
+
+                    <!-- Ergebnis-Anzeige (z.B. "Option (x Votes)") -->
+                    <StackPanel x:Name="ResultsPanel" Margin="0,5,0,0">
+                        <!-- Hier werden die bereits formatierten Strings angezeigt:
+                             "Option 1 (2 Votes)", etc. -->
+                        <ItemsControl ItemsSource="{Binding PollOptions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Falls die Umfrage geschlossen ist, eine Info -->
+                        <TextBlock Text="Diese Umfrage ist geschlossen."
+                                   Foreground="Red"
+                                   Margin="5,5,0,0"
+                                   Visibility="{Binding IsClosed,
+                                        Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    </StackPanel>
 
                     <!-- Uhrzeit -->
                     <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}"
@@ -105,6 +128,23 @@
                                Margin="0,8,0,0"/>
                 </StackPanel>
             </Border>
+
+            <!-- DataTemplate-Triggers: 
+                 Steuern Sichtbarkeit VotingPanel vs. ResultsPanel 
+                 anhand von HasUserVoted und IsClosed -->
+            <DataTemplate.Triggers>
+                <!-- User hat bereits abgestimmt => Voting ausblenden, Ergebnisse einblenden -->
+                <DataTrigger Binding="{Binding HasUserVoted}" Value="True">
+                    <Setter TargetName="VotingPanel" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="ResultsPanel" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+
+                <!-- Poll ist geschlossen => Voting ausblenden, Ergebnisse einblenden -->
+                <DataTrigger Binding="{Binding IsClosed}" Value="True">
+                    <Setter TargetName="VotingPanel" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="ResultsPanel" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
         </DataTemplate>
 
         <!-- 4) MessageTemplateSelector -->
@@ -146,7 +186,7 @@
                 <StackPanel Orientation="Horizontal"
                             Grid.Column="1"
                             VerticalAlignment="Center">
-                    <!-- NEU: Button zum Laden des Plugins -->
+                    <!-- Button zum Laden des Plugins -->
                     <Button Content="Load Poll Plugin"
                             Command="{Binding LoadPollPluginCommand}"
                             Width="130"
@@ -162,7 +202,7 @@
             </Grid>
         </Border>
 
-        <!-- Linke Spalte -->
+        <!-- Linke Spalte (Channels, User etc.) -->
         <Border Grid.Row="1"
                 Grid.Column="0"
                 Background="#F4F4F4"

@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Security.Claims;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using De.Hsfl.LoomChat.Chat.Services;
+using System.Security.Claims;
 
 namespace De.Hsfl.LoomChat.Chat.Hubs
 {
@@ -16,77 +16,73 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
         private readonly ChatService _chatService;
         private readonly ILogger<PollHub> _logger;
 
-        public PollHub(PollService pollService, ChatService chatService, ILogger<PollHub> logger)
+        public PollHub(PollService pollService,
+                       ChatService chatService,
+                       ILogger<PollHub> logger)
         {
             _pollService = pollService;
             _chatService = chatService;
             _logger = logger;
         }
 
-        /// <summary>
-        /// Erstellt eine neue Umfrage (Poll) in einem Channel, 
-        /// legt anschließend eine PollMessage an (Chatverlauf), 
-        /// und broadcastet "PollCreated" an alle.
-        /// </summary>
         public async Task CreatePoll(int channelId, string title, List<string> options)
         {
-            _logger.LogInformation("CreatePoll: ChannelId={ChannelId}, Title={Title}", channelId, title);
-
-            // 1) User aus JWT ermitteln
             int userId = GetUserId();
-            _logger.LogDebug("CreatePoll aufgerufen von UserId={UserId}", userId);
+            _logger.LogInformation("CreatePoll: ChannelId={ChannelId}, Title={Title}, UserId={UserId}",
+                                   channelId, title, userId);
 
-            // 2) Den eigentlichen Poll in der DB anlegen (Tabelle Poll + PollOptions)
             var poll = await _pollService.CreatePollAsync(channelId, userId, title, options);
 
-            // 3) Zusätzlich eine PollMessage im Chat anlegen, damit der Client 
-            //    ein Element vom Type=Poll (ChatMessageDto) sehen kann.
+            // ChatMessage vom Typ "Poll" anlegen
             await _chatService.CreatePollMessageAsync(channelId, userId, poll.Id);
 
-            // 4) Broadcast an alle Clients in der Channel-Gruppe
+            // Broadcast an alle im Channel
             await Clients.Group(channelId.ToString())
                          .SendAsync("PollCreated", poll.Title, options);
 
-            _logger.LogInformation(
-                "PollCreated broadcast -> Channel={ChannelId}, PollTitle='{Title}'",
-                channelId, title
-            );
+            _logger.LogInformation("PollCreated broadcast -> Channel={ChannelId}, PollTitle='{Title}'",
+                                   channelId, title);
         }
 
-        /// <summary>
-        /// User votet für eine bestimmte Option -> Zähler hoch + "PollUpdated" Broadcast.
-        /// </summary>
         public async Task Vote(string title, string option)
         {
             int userId = GetUserId();
-            _logger.LogInformation("Vote: Title={Title}, Option={Option}, User={UserId}", title, option, userId);
+            _logger.LogInformation("Vote: Title={Title}, Option={Option}, User={UserId}",
+                                   title, option, userId);
 
             var pollId = await _pollService.FindPollIdByTitleAsync(title);
             if (pollId == null)
             {
-                _logger.LogWarning("Vote fehlgeschlagen: Keine Poll mit Title='{Title}' gefunden.", title);
+                _logger.LogWarning("Vote: Poll '{Title}' not found!", title);
                 return;
             }
 
-            // Abstimmung -> Votes++
-            await _pollService.VoteAsync(pollId.Value, userId, option);
+            try
+            {
+                await _pollService.VoteAsync(pollId.Value, userId, option);
 
-            // Neue Ergebnisse abrufen
-            var results = await _pollService.GetResultsAsync(pollId.Value);
+                // Neue Ergebnisse abrufen
+                var results = await _pollService.GetResultsAsync(pollId.Value);
 
-            // Broadcast an alle (oder an Clients.Group, wenn gewünscht)
-            await Clients.All.SendAsync("PollUpdated", title, results);
+                // Broadcast an alle
+                await Clients.All.SendAsync("PollUpdated", title, results);
+            }
+            catch (Exception ex)
+            {
+                // => Hier könntest du dem Aufrufer eine Fehlermeldung schicken,
+                //    wenn z.B. "User already voted." oder "Poll is closed".
+                _logger.LogError(ex, "Vote error. Title='{Title}' User={UserId}", title, userId);
 
-            _logger.LogInformation("PollUpdated broadcast -> Poll='{Title}', Voter={UserId}", title, userId);
+                // Optional: Sende an Caller
+                await Clients.Caller.SendAsync("PollError", ex.Message);
+            }
         }
 
-        /// <summary>
-        /// Schließt eine Umfrage, keine weiteren Votes möglich -> "PollClosed".
-        /// </summary>
         public async Task ClosePoll(string title)
         {
             int userId = GetUserId();
-            _logger.LogInformation("ClosePoll: Title={Title}, triggered by User={UserId}", title, userId);
+            _logger.LogInformation("ClosePoll: Title={Title}, triggered by User={UserId}",
+                                   title, userId);
 
             var pollId = await _pollService.FindPollIdByTitleAsync(title);
             if (pollId == null) return;
@@ -94,16 +90,13 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
             await _pollService.ClosePollAsync(pollId.Value);
 
             await Clients.All.SendAsync("PollClosed", title);
-            _logger.LogInformation("PollClosed -> Poll='{Title}'", title);
         }
 
-        /// <summary>
-        /// Löscht eine Umfrage komplett -> "PollDeleted".
-        /// </summary>
         public async Task DeletePoll(string title)
         {
             int userId = GetUserId();
-            _logger.LogInformation("DeletePoll: Title={Title}, triggered by User={UserId}", title, userId);
+            _logger.LogInformation("DeletePoll: Title={Title}, triggered by User={UserId}",
+                                   title, userId);
 
             var pollId = await _pollService.FindPollIdByTitleAsync(title);
             if (pollId == null) return;
@@ -111,10 +104,8 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
             await _pollService.DeletePollAsync(pollId.Value);
 
             await Clients.All.SendAsync("PollDeleted", title);
-            _logger.LogInformation("PollDeleted -> Poll='{Title}'", title);
         }
 
-        // Optional: Gruppenbeitritt, falls Sie wollen
         public override async Task OnConnectedAsync()
         {
             await base.OnConnectedAsync();
@@ -125,9 +116,6 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
             await base.OnDisconnectedAsync(exception);
         }
 
-        /// <summary>
-        /// Extrahiert die UserId aus dem JWT.
-        /// </summary>
         private int GetUserId()
         {
             var claim = Context.User?.FindFirst(ClaimTypes.NameIdentifier);

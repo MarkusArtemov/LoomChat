@@ -26,13 +26,13 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
         {
             try
             {
-                _logger.LogInformation(
-                    "SendMessageToChannel called. ChannelId={ChannelId}, RequestUserId={RequestUserId}, Message={Message}",
-                    request.ChannelId, request.UserId, request.Message
-                );
-
                 int userId = GetUserId();
                 string userName = GetUserName();
+
+                _logger.LogInformation(
+                    "SendMessageToChannel. Channel={ChannelId}, RequestUserId={RequestUserId}, RealUserId={RealUserId}, Msg={Message}",
+                    request.ChannelId, request.UserId, userId, request.Message
+                );
 
                 var msgResponse = await _chatService.SendMessageAsync(
                     request.ChannelId,
@@ -40,6 +40,7 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
                     request.Message
                 );
 
+                // Broadcast an alle im Channel
                 await Clients.Group(request.ChannelId.ToString()).SendAsync(
                     "ReceiveChannelMessage",
                     msgResponse.ChannelId,
@@ -47,11 +48,6 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
                     userName,
                     msgResponse.Content,
                     msgResponse.SentAt
-                );
-
-                _logger.LogDebug(
-                    "Message sent successfully. Channel={ChannelId}, SenderUserId={SenderUserId}, SentAt={SentAt}",
-                    msgResponse.ChannelId, msgResponse.SenderUserId, msgResponse.SentAt
                 );
             }
             catch (Exception ex)
@@ -64,23 +60,28 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
         public async Task JoinChannel(JoinChannelRequest request)
         {
             _logger.LogInformation(
-                "JoinChannel called. ConnectionId={ConnectionId}, ChannelId={ChannelId}",
+                "JoinChannel. ConnId={ConnId}, ChannelId={ChannelId}",
                 Context.ConnectionId, request.ChannelId
             );
 
             await Groups.AddToGroupAsync(Context.ConnectionId, request.ChannelId.ToString());
-            var messages = await _chatService.GetMessagesForChannelAsync(request.ChannelId);
 
-            _logger.LogDebug("User joined channel {ChannelId}. Found {Count} messages.",
-                             request.ChannelId, messages.Count);
+            int userId = GetUserId();
+            var messages = await _chatService.GetMessagesForChannelAsync(request.ChannelId, userId);
 
+            _logger.LogDebug(
+                "User joined channel {ChannelId}. Found {Count} messages. (UserId={UserId})",
+                request.ChannelId, messages.Count, userId
+            );
+
+            // Schicke dem Caller alle Nachrichten (inkl. HasUserVoted bei Polls)
             await Clients.Caller.SendAsync("ChannelHistory", request.ChannelId, messages);
         }
 
         public async Task LeaveChannel(LeaveChannelRequest request)
         {
             _logger.LogInformation(
-                "LeaveChannel called. ConnectionId={ConnectionId}, ChannelId={ChannelId}, RemoveMembership={RemoveMembership}",
+                "LeaveChannel. ConnId={ConnId}, ChannelId={ChannelId}, RemoveMembership={RemoveMembership}",
                 Context.ConnectionId, request.ChannelId, request.RemoveMembership
             );
 
@@ -97,27 +98,16 @@ namespace De.Hsfl.LoomChat.Chat.Hubs
 
         public async Task ArchiveChannel(ArchiveChannelRequest request)
         {
-            _logger.LogInformation("ArchiveChannel called. ChannelId={ChannelId}", request.ChannelId);
+            _logger.LogInformation("ArchiveChannel. ChannelId={ChannelId}", request.ChannelId);
 
             int userId = GetUserId();
             var success = await _chatService.ArchiveChannelForUserAsync(request.ChannelId, userId);
-            await Clients.Caller.SendAsync("ChannelArchived", request.ChannelId, success);
 
-            _logger.LogDebug(
-                "ArchiveChannel result for ChannelId={ChannelId}, UserId={UserId}: {Success}",
-                request.ChannelId, userId, success
-            );
+            await Clients.Caller.SendAsync("ChannelArchived", request.ChannelId, success);
         }
 
         private int GetUserId()
         {
-            // Logge den rohen Token, der per QueryString ankommt:
-            var rawToken = Context.GetHttpContext()?.Request.Query["access_token"];
-            if (!string.IsNullOrEmpty(rawToken))
-            {
-                _logger.LogInformation("Raw Token in ChatHub: {RawToken}", rawToken);
-            }
-
             var claim = Context.User?.FindFirst(ClaimTypes.NameIdentifier);
             return claim == null ? 0 : int.Parse(claim.Value);
         }

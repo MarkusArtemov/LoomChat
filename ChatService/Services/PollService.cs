@@ -20,10 +20,6 @@ namespace De.Hsfl.LoomChat.Chat.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// Erstellt eine neue Umfrage für einen Channel, angelegt von userId.
-        /// Speichert z.B. CreatedByUserId in der Poll-Entität.
-        /// </summary>
         public async Task<Poll> CreatePollAsync(int channelId, int userId, string title, List<string> options)
         {
             _logger.LogInformation("CreatePollAsync: ChannelId={ChannelId}, UserId={UserId}, Title={Title}",
@@ -32,7 +28,7 @@ namespace De.Hsfl.LoomChat.Chat.Services
             var poll = new Poll
             {
                 ChannelId = channelId,
-                CreatedByUserId = userId,     
+                CreatedByUserId = userId,
                 Title = title,
                 CreatedAt = DateTime.UtcNow
             };
@@ -52,8 +48,7 @@ namespace De.Hsfl.LoomChat.Chat.Services
         }
 
         /// <summary>
-        /// Findet die Poll-Id anhand des Titels (Beispiel).
-        /// In der Praxis lieber PollId direkt vom Client übergeben.
+        /// Liefert den PollId zur gegebenen Poll-Title (falls 1:1).
         /// </summary>
         public async Task<int?> FindPollIdByTitleAsync(string title)
         {
@@ -63,9 +58,7 @@ namespace De.Hsfl.LoomChat.Chat.Services
 
         /// <summary>
         /// User 'userId' stimmt für die Option 'optionText' in der Poll 'pollId' ab.
-        /// Aktuell werden nur die Votes hochgezählt.
-        /// Wenn du wirklich pro User erfassen willst, wer abgestimmt hat,
-        /// brauchst du eine separate Tabelle (z.B. PollVotes).
+        /// Jetzt mit Prüfung, ob er schon abgestimmt hat (1 Vote/Benutzer).
         /// </summary>
         public async Task VoteAsync(int pollId, int userId, string optionText)
         {
@@ -81,21 +74,36 @@ namespace De.Hsfl.LoomChat.Chat.Services
             if (poll.IsClosed)
                 throw new Exception("Poll is closed");
 
+            // Hat der User bereits abgestimmt?
+            bool alreadyVoted = await _dbContext.PollVotes
+                .AnyAsync(v => v.PollId == pollId && v.UserId == userId);
+            if (alreadyVoted)
+                throw new Exception("User already voted.");
+
+            // Option suchen
             var opt = poll.Options.FirstOrDefault(o => o.OptionText == optionText);
             if (opt == null)
                 throw new Exception("Option not found");
 
+            // Votes hochzählen
             opt.Votes++;
+
+            // PollVote-Eintrag anlegen
+            var vote = new PollVote
+            {
+                PollId = poll.Id,
+                PollOptionId = opt.Id,
+                UserId = userId,
+                VotedAt = DateTime.UtcNow
+            };
+            _dbContext.PollVotes.Add(vote);
+
             await _dbContext.SaveChangesAsync();
 
-            _logger.LogDebug("User {UserId} voted for option '{OptionText}' in poll {PollId}. Votes now={Votes}",
+            _logger.LogDebug("User {UserId} voted for '{OptionText}' in poll {PollId}. Votes now={Votes}",
                              userId, optionText, pollId, opt.Votes);
         }
 
-        /// <summary>
-        /// Schließt die Poll (IsClosed = true).
-        /// Evtl. kannst du checken, ob userId == poll.CreatedByUserId oder ChannelOwner.
-        /// </summary>
         public async Task ClosePollAsync(int pollId)
         {
             var poll = await _dbContext.Polls.FindAsync(pollId);
@@ -107,27 +115,30 @@ namespace De.Hsfl.LoomChat.Chat.Services
             _logger.LogInformation("ClosePollAsync: PollId={PollId} was closed.", pollId);
         }
 
-        /// <summary>
-        /// Löscht eine Poll + zugehörige Optionen.
-        /// Evtl. Permission-Check, ob userId == Ersteller.
-        /// </summary>
         public async Task DeletePollAsync(int pollId)
         {
             var poll = await _dbContext.Polls
                 .Include(p => p.Options)
                 .FirstOrDefaultAsync(p => p.Id == pollId);
-
             if (poll == null) return;
 
+            // Optional: zugehörige PollVotes löschen
+            var votes = await _dbContext.PollVotes
+                .Where(v => v.PollId == pollId)
+                .ToListAsync();
+            _dbContext.PollVotes.RemoveRange(votes);
+
+            // Optionen löschen
             _dbContext.PollOptions.RemoveRange(poll.Options);
             _dbContext.Polls.Remove(poll);
+
             await _dbContext.SaveChangesAsync();
 
             _logger.LogInformation("DeletePollAsync: PollId={PollId} deleted.", pollId);
         }
 
         /// <summary>
-        /// Liefert ein Dictionary (OptionText => VoteCount) für die Poll.
+        /// Gibt ein Dictionary: OptionText => Votes
         /// </summary>
         public async Task<Dictionary<string, int>> GetResultsAsync(int pollId)
         {
@@ -138,10 +149,24 @@ namespace De.Hsfl.LoomChat.Chat.Services
             if (poll == null)
                 throw new Exception("Poll not found");
 
-            _logger.LogDebug("GetResultsAsync: PollId={PollId} => {Count} options found",
+            _logger.LogDebug("GetResultsAsync: PollId={PollId} => {Count} options",
                              pollId, poll.Options.Count);
 
-            return poll.Options.ToDictionary(o => o.OptionText, o => o.Votes);
+            var dict = new Dictionary<string, int>();
+            foreach (var opt in poll.Options)
+            {
+                dict[opt.OptionText] = opt.Votes;
+            }
+            return dict;
+        }
+
+        /// <summary>
+        /// Prüft, ob der gegebene User in der Poll bereits abgestimmt hat.
+        /// </summary>
+        public async Task<bool> HasUserVotedAsync(int pollId, int userId)
+        {
+            return await _dbContext.PollVotes
+                .AnyAsync(v => v.PollId == pollId && v.UserId == userId);
         }
     }
 }
