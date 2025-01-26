@@ -20,20 +20,20 @@
 
         <!-- 1) Meine Textnachricht (rechte Bubble) -->
         <DataTemplate x:Key="MyTextMessageTemplate">
-            <Border Background="#DCF8C6" 
-                    Padding="10" 
-                    Margin="10" 
-                    CornerRadius="10" 
+            <Border Background="#DCF8C6"
+                    Padding="10"
+                    Margin="10"
+                    CornerRadius="10"
                     HorizontalAlignment="Right">
                 <StackPanel>
-                    <TextBlock Text="Ich" 
-                               FontWeight="Bold" 
+                    <TextBlock Text="Ich"
+                               FontWeight="Bold"
                                Margin="0,0,0,5"/>
                     <!-- Textinhalt -->
                     <TextBlock Text="{Binding Content}" />
                     <!-- Uhrzeit -->
-                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}" 
-                               FontSize="10" 
+                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}"
+                               FontSize="10"
                                HorizontalAlignment="Right"/>
                 </StackPanel>
             </Border>
@@ -41,21 +41,21 @@
 
         <!-- 2) Fremde Textnachricht (linke Bubble) -->
         <DataTemplate x:Key="OtherTextMessageTemplate">
-            <Border Background="LightGray" 
-                    Padding="10" 
-                    Margin="10" 
-                    CornerRadius="10" 
+            <Border Background="LightGray"
+                    Padding="10"
+                    Margin="10"
+                    CornerRadius="10"
                     HorizontalAlignment="Left">
                 <StackPanel>
                     <!-- SenderUserId oder ggf. Username -->
-                    <TextBlock Text="{Binding SenderUserId}" 
-                               FontWeight="Bold" 
+                    <TextBlock Text="{Binding SenderUserId}"
+                               FontWeight="Bold"
                                Margin="0,0,0,5"/>
                     <!-- Textinhalt -->
                     <TextBlock Text="{Binding Content}" />
                     <!-- Uhrzeit -->
-                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}" 
-                               FontSize="10" 
+                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}"
+                               FontSize="10"
                                HorizontalAlignment="Right"/>
                 </StackPanel>
             </Border>
@@ -64,39 +64,44 @@
         <!-- 3) PollMessageTemplate (Umfragen) -->
         <DataTemplate x:Key="PollMessageTemplate">
             <Border Background="#FFE4B5"
-                    Padding="10" 
-                    Margin="10" 
+                    Padding="10"
+                    Margin="10"
                     CornerRadius="10"
                     HorizontalAlignment="Left">
                 <StackPanel>
-                    <TextBlock Text="Umfrage:" 
-                               FontWeight="Bold" 
+                    <TextBlock Text="Umfrage:"
+                               FontWeight="Bold"
                                FontSize="14"/>
-                    <TextBlock Text="{Binding PollTitle}" 
-                               Margin="0,0,0,5" 
+                    <TextBlock Text="{Binding PollTitle}"
+                               Margin="0,0,0,5"
                                FontWeight="Bold"/>
 
-                    <!-- Liste der Optionen mit "Vote"-Button -->
-                    <ItemsControl ItemsSource="{Binding PollOptions}">
-                        <ItemsControl.ItemTemplate>
+                    <!-- Liste der Optionen: RadioButtons in einer ListBox (Single Selection) -->
+                    <ListBox x:Name="OptionList"
+                             ItemsSource="{Binding PollOptions}"
+                             SelectionMode="Single"
+                             Margin="0,5,0,0">
+                        <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                                    <TextBlock Text="{Binding}" 
-                                               VerticalAlignment="Center"/>
-                                    <!-- "Vote" Button => CommandParameter = dieser Optionen-String -->
-                                    <Button Content="Vote"
-                                            Margin="10,0,0,0"
-                                            Command="{Binding DataContext.VotePollCommand, 
-                                                      RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                            CommandParameter="{Binding}" />
-                                </StackPanel>
+                                <!-- Jeder Eintrag wird als RadioButton dargestellt -->
+                                <RadioButton Content="{Binding}"
+                                             GroupName="{Binding DataContext.PollId,
+                                                RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                             Margin="5,0" />
                             </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Vote-Button: übergibt die ausgewählte Option als CommandParameter -->
+                    <Button Content="Vote"
+                            Margin="0,5,0,0"
+                            Command="{Binding DataContext.VotePollCommand,
+                                      RelativeSource={RelativeSource AncestorType=StackPanel}}"
+                            CommandParameter="{Binding SelectedItem, ElementName=OptionList}" />
 
                     <!-- Uhrzeit -->
-                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}" 
-                               FontSize="10" 
+                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}"
+                               FontSize="10"
                                HorizontalAlignment="Right"
                                Margin="0,8,0,0"/>
                 </StackPanel>
@@ -104,7 +109,7 @@
         </DataTemplate>
 
         <!-- 4) MessageTemplateSelector -->
-        <converter:MessageTemplateSelector 
+        <converter:MessageTemplateSelector
             x:Key="MessageTemplateSelector"
             MyTextMessageTemplate="{StaticResource MyTextMessageTemplate}"
             OtherTextMessageTemplate="{StaticResource OtherTextMessageTemplate}"
@@ -123,9 +128,9 @@
         </Grid.ColumnDefinitions>
 
         <!-- Header / Titel -->
-        <Border Grid.Row="0" 
-                Grid.ColumnSpan="2" 
-                Padding="10" 
+        <Border Grid.Row="0"
+                Grid.ColumnSpan="2"
+                Padding="10"
                 Background="#E8E8E8">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -134,13 +139,13 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Titel -->
-                <TextBlock Text="LoomChat" 
-                           FontSize="24" 
-                           FontWeight="Bold" 
+                <TextBlock Text="LoomChat"
+                           FontSize="24"
+                           FontWeight="Bold"
                            VerticalAlignment="Center"/>
 
-                <StackPanel Orientation="Horizontal" 
-                            Grid.Column="1" 
+                <StackPanel Orientation="Horizontal"
+                            Grid.Column="1"
                             VerticalAlignment="Center">
                     <!-- NEU: Button zum Laden des Plugins -->
                     <Button Content="Load Poll Plugin"
@@ -159,9 +164,9 @@
         </Border>
 
         <!-- Linke Spalte -->
-        <Border Grid.Row="1" 
-                Grid.Column="0" 
-                Background="#F4F4F4" 
+        <Border Grid.Row="1"
+                Grid.Column="0"
+                Background="#F4F4F4"
                 Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
@@ -184,7 +189,7 @@
                     </ListView>
                 </GroupBox>
 
-                <!-- Falls Sie noch weitere Buttons hier möchten -->
+                <!-- Button: Channel erstellen -->
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,5">
                     <Button Content="Channel erstellen"
                             Command="{Binding OpenPopupCommand}"
@@ -221,9 +226,9 @@
         </Border>
 
         <!-- Rechte Spalte: Tabs (Chat / Dateien) -->
-        <Border Grid.Row="1" 
-                Grid.Column="1" 
-                Padding="10" 
+        <Border Grid.Row="1"
+                Grid.Column="1"
+                Padding="10"
                 Background="#F8F8F8">
             <TabControl>
                 <!-- TabItem: Chat -->
@@ -235,9 +240,9 @@
                         </Grid.RowDefinitions>
 
                         <!-- Nachrichtenliste -->
-                        <ScrollViewer Grid.Row="0" 
+                        <ScrollViewer Grid.Row="0"
                                       VerticalScrollBarVisibility="Auto"
-                                      Visibility="{Binding ChatVisible, 
+                                      Visibility="{Binding ChatVisible,
                                         Converter={StaticResource BoolToVisibilityConverter}}">
                             <ItemsControl ItemsSource="{Binding SelectedChannel.ChatMessages}"
                                           ItemTemplateSelector="{StaticResource MessageTemplateSelector}" />
@@ -249,7 +254,7 @@
                                    VerticalAlignment="Center"
                                    FontSize="16"
                                    FontWeight="Bold"
-                                   Visibility="{Binding IsChatNotVisible, 
+                                   Visibility="{Binding IsChatNotVisible,
                                         Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                         <!-- Eingabebereich -->
@@ -267,7 +272,7 @@
                             <Button Content="Umfrage erstellen"
                                     Command="{Binding OpenPollPopupCommand}"
                                     Width="120"
-                                    Visibility="{Binding IsPollPluginLoaded, 
+                                    Visibility="{Binding IsPollPluginLoaded,
                                         Converter={StaticResource BoolToVisibilityConverter}}"/>
                         </StackPanel>
                     </Grid>
@@ -281,10 +286,10 @@
                                    VerticalAlignment="Center"
                                    FontSize="16"
                                    FontWeight="Bold"
-                                   Visibility="{Binding IsChatNotVisible, 
+                                   Visibility="{Binding IsChatNotVisible,
                                         Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                        <Grid Visibility="{Binding ChatVisible, 
+                        <Grid Visibility="{Binding ChatVisible,
                                           Converter={StaticResource BoolToVisibilityConverter}}">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -396,8 +401,8 @@
 
                     <!-- Titel -->
                     <TextBlock Text="Titel:"/>
-                    <TextBox Text="{Binding PollTitle}" 
-                             Width="300" 
+                    <TextBox Text="{Binding PollTitle}"
+                             Width="300"
                              Margin="0,0,0,10"/>
 
                     <!-- Optionen -->
@@ -414,8 +419,8 @@
 
                     <!-- Zeile zum Hinzufügen einer Option -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                        <TextBox Text="{Binding NewOptionText}" 
-                                 Width="200" 
+                        <TextBox Text="{Binding NewOptionText}"
+                                 Width="200"
                                  Margin="0,0,10,0"/>
                         <Button Content="Option hinzufügen"
                                 Command="{Binding AddPollOptionCommand}"/>
