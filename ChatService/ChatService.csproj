@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <Folder Include="Persistence\" />
+    <Folder Include="Plugins\" />
   </ItemGroup>
 
   <ItemGroup>

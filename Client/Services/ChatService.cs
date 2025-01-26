@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
-using System.Net.Http.Headers; 
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -12,39 +12,30 @@ using De.Hsfl.LoomChat.Common.Models;
 
 namespace De.Hsfl.LoomChat.Client.Services
 {
-    /// <summary>
-    /// Provides REST for channel/user management and SignalR for live messaging
-    /// </summary>
     internal class ChatService
     {
         private HubConnection _hubConnection;
-
-        // We'll store the JWT token here once we get it in InitializeSignalRAsync
         private string _jwtToken;
 
-        // Fires when a new message arrives
+        // Fired when a new text message arrives
         public event Action<int, int, string, string, DateTime> OnMessageReceived;
 
-        // Fires when the server sends the entire history for a channel
-        public event Action<int, List<ChatMessageResponse>> OnChannelHistoryReceived;
+        // Fired when the server sends the entire channel history as List<ChatMessageDto>
+        public event Action<int, List<ChatMessageDto>> OnChannelHistoryReceived;
 
-        /// <summary>
-        /// Sets up SignalR connection with JWT (and also stores it for REST calls).
-        /// </summary>
         public async Task InitializeSignalRAsync(string jwtToken)
         {
-            // Save this token for subsequent REST calls
             _jwtToken = jwtToken;
 
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl("http://localhost:5115/chatHub", options =>
                 {
-                    // For SignalR, we put the JWT as "access_token" in the query
+                    // JWT
                     options.AccessTokenProvider = () => Task.FromResult(jwtToken);
                 })
                 .Build();
 
-            // (A) single new messages
+            // (A) Single new text message
             _hubConnection.On<int, int, string, string, DateTime>(
                 "ReceiveChannelMessage",
                 (channelId, senderUserId, senderName, content, sentAt) =>
@@ -53,9 +44,8 @@ namespace De.Hsfl.LoomChat.Client.Services
                 }
             );
 
-            // (B) channel history
-            //     server sends "ChannelHistory", channelId + List<ChatMessageResponse>
-            _hubConnection.On<int, List<ChatMessageResponse>>(
+            // (B) ChannelHistory => List<ChatMessageDto>
+            _hubConnection.On<int, List<ChatMessageDto>>(
                 "ChannelHistory",
                 (channelId, msgList) =>
                 {
@@ -66,54 +56,6 @@ namespace De.Hsfl.LoomChat.Client.Services
             await _hubConnection.StartAsync();
         }
 
-        /// <summary>
-        /// Helper method: creates an HttpClient that sets the Authorization header if we have a JWT.
-        /// </summary>
-        private HttpClient CreateHttpClientWithAuth()
-        {
-            var client = new HttpClient();
-            if (!string.IsNullOrWhiteSpace(_jwtToken))
-            {
-                // Standard Bearer header
-                client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", _jwtToken);
-            }
-            return client;
-        }
-
-        /// <summary>
-        /// Joins a channel group => triggers "ChannelHistory" from server
-        /// </summary>
-        public async Task JoinChannel(int channelId)
-        {
-            if (_hubConnection == null) return;
-            var req = new JoinChannelRequest(channelId);
-            await _hubConnection.InvokeAsync("JoinChannel", req);
-        }
-
-        /// <summary>
-        /// Leaves the channel
-        /// </summary>
-        public async Task LeaveChannel(int channelId, bool removeMembership)
-        {
-            if (_hubConnection == null) return;
-            var req = new LeaveChannelRequest(channelId, removeMembership);
-            await _hubConnection.InvokeAsync("LeaveChannel", req);
-        }
-
-        /// <summary>
-        /// Sends a message via SignalR to all in channel
-        /// </summary>
-        public async Task SendMessageSignalR(int channelId, int userId, string messageText)
-        {
-            if (_hubConnection == null) return;
-            var req = new SendMessageRequest(userId, messageText, channelId);
-            await _hubConnection.InvokeAsync("SendMessageToChannel", req);
-        }
-
-        /// <summary>
-        /// Disconnects from hub
-        /// </summary>
         public async Task DisconnectSignalRAsync()
         {
             if (_hubConnection != null)
@@ -124,7 +66,34 @@ namespace De.Hsfl.LoomChat.Client.Services
             }
         }
 
-        // ========== REST PART: minimal channels, users ==========
+        private HttpClient CreateHttpClientWithAuth()
+        {
+            var client = new HttpClient();
+            if (!string.IsNullOrWhiteSpace(_jwtToken))
+            {
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", _jwtToken);
+            }
+            return client;
+        }
+
+        // SignalR: join channel
+        public async Task JoinChannel(int channelId)
+        {
+            if (_hubConnection == null) return;
+            var req = new JoinChannelRequest(channelId);
+            await _hubConnection.InvokeAsync("JoinChannel", req);
+        }
+
+        // SignalR: send text message
+        public async Task SendMessageSignalR(int channelId, int userId, string messageText)
+        {
+            if (_hubConnection == null) return;
+            var req = new SendMessageRequest(userId, messageText, channelId);
+            await _hubConnection.InvokeAsync("SendMessageToChannel", req);
+        }
+
+        // =============== REST PART =================
 
         public async Task<List<ChannelDto>> LoadChannels(GetChannelsRequest request)
         {
@@ -147,7 +116,7 @@ namespace De.Hsfl.LoomChat.Client.Services
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Fehler beim Fetchen der Channels: {ex.Message}");
+                    MessageBox.Show($"Fehler beim Laden der Channels: {ex.Message}");
                     return null;
                 }
             }
@@ -174,7 +143,7 @@ namespace De.Hsfl.LoomChat.Client.Services
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Fehler beim Fetchen der DMs: {ex.Message}");
+                    MessageBox.Show($"Fehler beim Laden der DMs: {ex.Message}");
                     return null;
                 }
             }
@@ -201,7 +170,7 @@ namespace De.Hsfl.LoomChat.Client.Services
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Fehler beim Fetchen der User: {ex.Message}");
+                    MessageBox.Show($"Fehler beim Laden der User: {ex.Message}");
                     return null;
                 }
             }

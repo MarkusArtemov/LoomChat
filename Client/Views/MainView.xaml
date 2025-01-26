@@ -85,18 +85,17 @@
                             <DataTemplate>
                                 <!-- Jeder Eintrag wird als RadioButton dargestellt -->
                                 <RadioButton Content="{Binding}"
-                                             GroupName="{Binding DataContext.PollId,
-                                                RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                             Margin="5,0" />
+                                             Margin="5,0"
+                                             IsChecked="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected, Mode=TwoWay}" />
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- Vote-Button: übergibt die ausgewählte Option als CommandParameter -->
+                    <!-- Button: Verweis auf den Page-DataContext -->
                     <Button Content="Vote"
                             Margin="0,5,0,0"
                             Command="{Binding DataContext.VotePollCommand,
-                                      RelativeSource={RelativeSource AncestorType=StackPanel}}"
+                                      RelativeSource={RelativeSource AncestorType=Page}}"
                             CommandParameter="{Binding SelectedItem, ElementName=OptionList}" />
 
                     <!-- Uhrzeit -->

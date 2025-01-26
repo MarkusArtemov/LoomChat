@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System;
+﻿using System;
+using System.Collections.Generic;
 
 namespace De.Hsfl.LoomChat.Common.Dtos
 {
@@ -9,17 +9,18 @@ namespace De.Hsfl.LoomChat.Common.Dtos
         public int ChannelId { get; set; }
         public int SenderUserId { get; set; }
         public DateTime SentAt { get; set; }
-
         public MessageType Type { get; set; }  // => "Text", "Poll"
 
-        // Nur genutzt bei Type=Text
-        public string Content { get; set; }
+        // Nur bei Text:
+        public string Content { get; set; } = string.Empty;
 
-        // Nur genutzt bei Type=Poll
-        public int PollId { get; set; }
+        // Nur bei Poll:
+        public int? PollId { get; set; }
         public bool IsClosed { get; set; }
-        public string PollTitle { get; set; }
-        public List<string> PollOptions { get; set; }
-        public string SelectedPollOption { get; set; }
+        public string PollTitle { get; set; } = string.Empty;
+        public List<string> PollOptions { get; set; } = new List<string>();
+
+        // NEU: Damit das UI zwischen Vote/Ergebnis umschalten kann:
+        public bool HasUserVoted { get; set; } = false;
     }
 }

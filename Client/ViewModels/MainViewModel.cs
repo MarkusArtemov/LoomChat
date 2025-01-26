@@ -17,20 +17,17 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 {
     public class MainViewModel : BaseViewModel
     {
-        private readonly ChatService _chatService;
-        private readonly LoginService _loginService;
+        private ChatService _chatService;
         private FileService _fileService;
         private PluginManager _pluginManager;
         private IPollPlugin _pollPlugin;
 
-        // ------------------ Collections für Channels etc. ------------------
         public ObservableCollection<ChannelDto> OpenChats { get; set; }
         public ObservableCollection<ChannelDto> DirectMessages { get; set; }
         public ObservableCollection<User> Users { get; set; }
         public ObservableCollection<DocumentResponse> Documents { get; set; }
         public ObservableCollection<DocumentVersionResponse> Versions { get; set; }
 
-        // ------------------ Ausgewählter Channel + Anzeige  ------------------
         private ChannelDto _selectedChannel;
         public ChannelDto SelectedChannel
         {
@@ -56,7 +53,6 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         }
         public bool IsChatNotVisible => !ChatVisible;
 
-        // ------------------ Neue Textnachricht  ------------------
         private string _newMessage;
         public string NewMessage
         {
@@ -64,14 +60,12 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             set { _newMessage = value; OnPropertyChanged(); }
         }
 
-        // ------------------ Popup zum Channel-Erstellen  ------------------
         private bool _popupOpen;
         public bool PopupOpen
         {
             get => _popupOpen;
             set { _popupOpen = value; OnPropertyChanged(); }
         }
-
         private string _newChannelName;
         public string NewChannelName
         {
@@ -79,22 +73,18 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             set { _newChannelName = value; OnPropertyChanged(); }
         }
 
-        // ------------------ Poll-Popup  ------------------
         private bool _pollPopupOpen;
         public bool PollPopupOpen
         {
             get => _pollPopupOpen;
             set { _pollPopupOpen = value; OnPropertyChanged(); }
         }
-
         private string _pollTitle;
         public string PollTitle
         {
             get => _pollTitle;
             set { _pollTitle = value; OnPropertyChanged(); }
         }
-
-        // Liste aller Antwortoptionen
         public ObservableCollection<string> PollOptions { get; set; }
         private string _newOptionText;
         public string NewOptionText
@@ -103,7 +93,13 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             set { _newOptionText = value; OnPropertyChanged(); }
         }
 
-        // ------------------ Dokumentauswahl  ------------------
+        private bool _isPollPluginLoaded;
+        public bool IsPollPluginLoaded
+        {
+            get => _isPollPluginLoaded;
+            set { _isPollPluginLoaded = value; OnPropertyChanged(); }
+        }
+
         private DocumentResponse _selectedDocument;
         public DocumentResponse SelectedDocument
         {
@@ -118,79 +114,62 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 }
             }
         }
-
         private DocumentVersionResponse _selectedVersion;
         public DocumentVersionResponse SelectedVersion
         {
             get => _selectedVersion;
-            set
-            {
-                _selectedVersion = value;
-                OnPropertyChanged();
-            }
+            set { _selectedVersion = value; OnPropertyChanged(); }
         }
 
-        // ------------------ Commands  ------------------
+        // Commands
         public ICommand LogoutCommand { get; }
         public ICommand OpenPopupCommand { get; }
         public ICommand ClosePopupCommand { get; }
         public ICommand CreateChannelCommand { get; }
         public ICommand SendMessageCommand { get; }
 
-        // FileService
         public ICommand CreateDocumentCommand { get; }
         public ICommand UploadVersionCommand { get; }
         public ICommand DownloadVersionCommand { get; }
         public ICommand DeleteVersionCommand { get; }
         public ICommand DeleteDocumentCommand { get; }
 
-        // PollPlugin laden
         public ICommand LoadPollPluginCommand { get; }
-
-        // Poll-Popup
         public ICommand OpenPollPopupCommand { get; }
         public ICommand ClosePollPopupCommand { get; }
         public ICommand AddPollOptionCommand { get; }
 
-        // Poll-spezifische
         public ICommand CreatePollCommand { get; }
         public ICommand VotePollCommand { get; }
         public ICommand ClosePollCommand { get; }
         public ICommand DeletePollCommand { get; }
 
-        // ------------------ Konstruktor  ------------------
         public MainViewModel()
         {
-            _loginService = new LoginService();
             _chatService = new ChatService();
+            PollOptions = new ObservableCollection<string>();
 
-            // Collections anlegen
             OpenChats = new ObservableCollection<ChannelDto>();
             DirectMessages = new ObservableCollection<ChannelDto>();
             Users = new ObservableCollection<User>();
             Documents = new ObservableCollection<DocumentResponse>();
             Versions = new ObservableCollection<DocumentVersionResponse>();
 
-            PollOptions = new ObservableCollection<string>();
-
-            // Basic Commands
             LogoutCommand = new RelayCommand(_ => ExecuteLogout());
-            OpenPopupCommand = new RelayCommand(_ => ExecuteOpenPopup());
-            ClosePopupCommand = new RelayCommand(_ => ExecuteClosePopup());
+            OpenPopupCommand = new RelayCommand(_ => PopupOpen = true);
+            ClosePopupCommand = new RelayCommand(_ => PopupOpen = false);
             CreateChannelCommand = new RelayCommand(_ => ExecuteCreateChannel());
             SendMessageCommand = new RelayCommand(_ => ExecuteSendMessage());
 
-            // FileService commands
             CreateDocumentCommand = new RelayCommand(_ => ExecuteCreateDocument());
             UploadVersionCommand = new RelayCommand(_ => ExecuteUploadVersion());
             DownloadVersionCommand = new RelayCommand(_ => ExecuteDownloadVersion());
             DeleteVersionCommand = new RelayCommand(_ => ExecuteDeleteVersion());
             DeleteDocumentCommand = new RelayCommand(_ => ExecuteDeleteDocument());
 
-            // PollPlugin commands
             LoadPollPluginCommand = new RelayCommand(_ => ExecuteLoadPollPlugin());
             OpenPollPopupCommand = new RelayCommand(_ => ExecuteOpenPollPopup());
-            ClosePollPopupCommand = new RelayCommand(_ => ExecuteClosePollPopup());
+            ClosePollPopupCommand = new RelayCommand(_ => PollPopupOpen = false);
             AddPollOptionCommand = new RelayCommand(_ => ExecuteAddPollOption());
 
             CreatePollCommand = new RelayCommand(_ => ExecuteCreatePoll());
@@ -199,7 +178,6 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             DeletePollCommand = new RelayCommand(_ => ExecuteDeletePoll());
         }
 
-        // ------------------ Daten laden  ------------------
         public async void LoadAsyncData()
         {
             if (SessionStore.User == null)
@@ -214,14 +192,14 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 return;
             }
 
-            // SignalR initialisieren
+            // SignalR
             await _chatService.InitializeSignalRAsync(jwt);
 
             // FileService
             _fileService = new FileService("https://localhost:7021/", jwt);
             await _fileService.InitializeFileHubAsync();
 
-            // FileService-Ereignisse
+            // File-Ereignisse
             _fileService.OnDocumentCreated += doc =>
             {
                 if (doc.ChannelId == SelectedChannel?.Id)
@@ -237,16 +215,14 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 }
             };
 
-            // Chat-Ereignisse
+            // ChatService-Ereignisse
             _chatService.OnMessageReceived += (channelId, senderUserId, senderName, content, sentAt) =>
             {
-                // Wir tun so, als wäre das ein reiner Text
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     var ch = FindChannel(channelId);
                     if (ch != null)
                     {
-                        // Erzeugt ein ChatMessageDto mit Type=Text
                         var msg = new ChatMessageDto
                         {
                             ChannelId = channelId,
@@ -264,10 +240,10 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                     }
                 });
             };
+
             _chatService.OnChannelHistoryReceived += (channelId, msgList) =>
             {
-                // msgList => List<ChatMessageResponse> / oder ChatMessageDto
-                // Hier wandeln wir sie 1:1 in ChatMessageDto (ggf. we already have the same type)
+                // hier msgList => List<ChatMessageDto>
                 Application.Current.Dispatcher.Invoke(() =>
                 {
                     var ch = FindChannel(channelId);
@@ -275,32 +251,15 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                     {
                         var sorted = msgList.OrderBy(m => m.SentAt).ToList();
                         ch.ChatMessages.Clear();
-
                         foreach (var m in sorted)
                         {
-                            // Falls serverseitig bereits ChatMessageDto => 
-                            // wir könnten m direkt adden.
-                            // Hier als Bsp 1:1:
-                            var msg = new ChatMessageDto
-                            {
-                                Id = m.Id,
-                                ChannelId = m.ChannelId,
-                                SenderUserId = m.SenderUserId,
-                                SentAt = m.SentAt,
-                                Type = m.Type,         // Ob Poll/Text
-                                Content = m.Content,
-                                PollId = m.PollId,
-                                IsClosed = m.IsClosed,
-                                PollTitle = m.PollTitle,
-                                PollOptions = m.PollOptions ?? new List<string>()
-                            };
-                            ch.ChatMessages.Add(msg);
+                            ch.ChatMessages.Add(m);
                         }
                     }
                 });
             };
 
-            // Channels laden
+            // Channels
             var channels = await _chatService.LoadChannels(new GetChannelsRequest(SessionStore.User.Id));
             if (channels != null)
             {
@@ -311,7 +270,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 }
             }
 
-            // DMs laden
+            // DMs
             var dms = await _chatService.LoadDirectChannels(new GetDirectChannelsRequest(SessionStore.User.Id));
             if (dms != null)
             {
@@ -322,7 +281,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 }
             }
 
-            // Users laden
+            // Users
             var userList = await _chatService.LoadAllUsers(new GetUsersRequest());
             if (userList != null)
             {
@@ -333,14 +292,12 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             }
         }
 
-        // ------------------ Hilfsmethode  ------------------
         private ChannelDto FindChannel(int channelId)
         {
             return OpenChats.FirstOrDefault(x => x.Id == channelId)
                 ?? DirectMessages.FirstOrDefault(x => x.Id == channelId);
         }
 
-        // ------------------ Basic (Logout, Channel)  ------------------
         private void ExecuteLogout()
         {
             SessionStore.User = null;
@@ -348,15 +305,12 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             MainWindow.NavigationService.Navigate(new LoginView());
         }
 
-        private void ExecuteOpenPopup() => PopupOpen = true;
-        private void ExecuteClosePopup() => PopupOpen = false;
-
         private async void ExecuteCreateChannel()
         {
             PopupOpen = false;
             if (string.IsNullOrWhiteSpace(NewChannelName) || NewChannelName.Length < 4)
             {
-                MessageBox.Show("Der Channelname muss mind. 4 Zeichen lang sein.");
+                MessageBox.Show("Channelname zu kurz.");
                 return;
             }
             var req = new CreateChannelRequest(SessionStore.User.Id, NewChannelName);
@@ -383,7 +337,10 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             {
                 await _chatService.JoinChannel(channel.Id);
                 await LoadDocumentsForChannel(channel.Id);
-                await _fileService.JoinFileChannel(channel.Id);
+                if (_fileService != null)
+                {
+                    await _fileService.JoinFileChannel(channel.Id);
+                }
             }
         }
 
@@ -408,7 +365,6 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             }
         }
 
-        // ------------------ Dokumente  ------------------
         private async Task LoadDocumentsForChannel(int channelId)
         {
             Documents.Clear();
@@ -444,7 +400,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         {
             if (SelectedChannel == null)
             {
-                MessageBox.Show("Kein Channel gewählt");
+                MessageBox.Show("Kein Channel gewählt.");
                 return;
             }
             if (_fileService == null) return;
@@ -485,7 +441,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             }
         }
 
-        // ------------------ PollPlugin / Umfrage  ------------------
+        // ========== PollPlugin ==========
         private async void ExecuteLoadPollPlugin()
         {
             try
@@ -500,18 +456,16 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 _pollPlugin = plugin as IPollPlugin;
                 if (_pollPlugin == null)
                 {
-                    MessageBox.Show("Das geladene Plugin ist kein IPollPlugin.");
+                    MessageBox.Show("Das geladene Plugin ist kein IPollPlugin!");
                     return;
                 }
 
-                // Beispiel-Ereignisse
+                // PollCreated
                 _pollPlugin.PollCreatedEvent += (title, options) =>
                 {
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         if (SelectedChannel == null) return;
-
-                        // Fügen wir eine Poll-Nachricht in die UI ein
                         var pollMsg = new ChatMessageDto
                         {
                             ChannelId = SelectedChannel.Id,
@@ -525,18 +479,16 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                     });
                 };
 
+                // PollUpdated => "Option (n Votes)"
                 _pollPlugin.PollUpdatedEvent += (title, results) =>
                 {
-                    // Dict<string,int>
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         if (SelectedChannel == null) return;
                         var pollMsg = SelectedChannel.ChatMessages
-                            .FirstOrDefault(m => m.Type == MessageType.Poll
-                                              && m.PollTitle == title);
+                            .FirstOrDefault(m => m.Type == MessageType.Poll && m.PollTitle == title);
                         if (pollMsg != null)
                         {
-                            // Bsp: Umbau in "Option (X Votes)"
                             var newList = new List<string>();
                             foreach (var kvp in results)
                             {
@@ -547,6 +499,37 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                     });
                 };
 
+                // PollClosed => IsClosed=true
+                _pollPlugin.PollClosedEvent += (title) =>
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (SelectedChannel == null) return;
+                        var pollMsg = SelectedChannel.ChatMessages
+                            .FirstOrDefault(m => m.Type == MessageType.Poll && m.PollTitle == title);
+                        if (pollMsg != null)
+                        {
+                            pollMsg.IsClosed = true;
+                        }
+                    });
+                };
+
+                // PollDeleted => remove
+                _pollPlugin.PollDeletedEvent += (title) =>
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (SelectedChannel == null) return;
+                        var pollMsg = SelectedChannel.ChatMessages
+                            .FirstOrDefault(m => m.Type == MessageType.Poll && m.PollTitle == title);
+                        if (pollMsg != null)
+                        {
+                            SelectedChannel.ChatMessages.Remove(pollMsg);
+                        }
+                    });
+                };
+
+                IsPollPluginLoaded = true;
                 MessageBox.Show("PollPlugin erfolgreich geladen!");
             }
             catch (Exception ex)
@@ -563,11 +546,6 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             PollPopupOpen = true;
         }
 
-        private void ExecuteClosePollPopup()
-        {
-            PollPopupOpen = false;
-        }
-
         private void ExecuteAddPollOption()
         {
             if (!string.IsNullOrWhiteSpace(NewOptionText))
@@ -577,21 +555,23 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             }
         }
 
+        private void ExecuteClosePollPopup() => PollPopupOpen = false;
+
         private async void ExecuteCreatePoll()
         {
             if (_pollPlugin == null)
             {
-                MessageBox.Show("PollPlugin ist nicht geladen!");
+                MessageBox.Show("PollPlugin nicht geladen!");
                 return;
             }
             if (SelectedChannel == null)
             {
-                MessageBox.Show("Bitte zuerst einen Channel auswählen.");
+                MessageBox.Show("Bitte zuerst Channel wählen.");
                 return;
             }
             if (string.IsNullOrWhiteSpace(PollTitle))
             {
-                MessageBox.Show("Bitte einen Umfragetitel eingeben.");
+                MessageBox.Show("Bitte Umfragetitel eingeben.");
                 return;
             }
             if (PollOptions.Count == 0)
@@ -602,8 +582,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 
             try
             {
-                int channelId = SelectedChannel.Id;
-                await _pollPlugin.CreatePoll(channelId, PollTitle, PollOptions.ToList());
+                await _pollPlugin.CreatePoll(SelectedChannel.Id, PollTitle, PollOptions.ToList());
                 MessageBox.Show($"Umfrage '{PollTitle}' wurde erstellt!");
                 PollPopupOpen = false;
             }
@@ -617,11 +596,11 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         {
             if (_pollPlugin == null)
             {
-                MessageBox.Show("PollPlugin ist nicht geladen!");
+                MessageBox.Show("PollPlugin nicht geladen!");
                 return;
             }
             string chosenOption = param as string;
-            if (string.IsNullOrEmpty(chosenOption))
+            if (string.IsNullOrWhiteSpace(chosenOption))
             {
                 MessageBox.Show("Keine Option ausgewählt.");
                 return;
@@ -629,17 +608,20 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
 
             try
             {
-                // Passenden Poll-Nachricht suchen, z.B. 
                 var pollMsg = SelectedChannel?.ChatMessages
-                    .FirstOrDefault(m => m.Type == MessageType.Poll);
+                    .FirstOrDefault(m => m.Type == MessageType.Poll && !m.IsClosed);
                 if (pollMsg == null)
                 {
-                    MessageBox.Show("Keine Poll-Nachricht gefunden.");
+                    MessageBox.Show("Keine offene Umfrage gefunden.");
                     return;
                 }
 
-                // PollId => string
-                await _pollPlugin.Vote(pollMsg.PollId.ToString(), chosenOption);
+                // Title oder PollId => hier Title
+                await _pollPlugin.Vote(pollMsg.PollTitle, chosenOption);
+
+                // => Du könntest pollMsg.HasUserVoted = true setzen, 
+                //    falls du das UI umschalten möchtest
+                // pollMsg.HasUserVoted = true;
 
                 MessageBox.Show($"Vote abgegeben für '{chosenOption}'!");
             }
@@ -649,22 +631,24 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             }
         }
 
-
         private async void ExecuteClosePoll()
         {
             if (_pollPlugin == null)
             {
-                MessageBox.Show("PollPlugin ist nicht geladen!");
+                MessageBox.Show("PollPlugin nicht geladen!");
                 return;
             }
             try
             {
-                if (SelectedChannel == null) return;
-                var pollMsg = SelectedChannel.ChatMessages
-                    .FirstOrDefault(m => m.Type == MessageType.Poll);
-                if (pollMsg == null) return;
+                var pollMsg = SelectedChannel?.ChatMessages
+                    .FirstOrDefault(m => m.Type == MessageType.Poll && !m.IsClosed);
+                if (pollMsg == null)
+                {
+                    MessageBox.Show("Keine offene Umfrage im Channel.");
+                    return;
+                }
 
-                await _pollPlugin.ClosePoll(pollMsg.PollId.ToString());
+                await _pollPlugin.ClosePoll(pollMsg.PollTitle);
                 MessageBox.Show("Umfrage geschlossen!");
             }
             catch (Exception ex)
@@ -677,19 +661,21 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
         {
             if (_pollPlugin == null)
             {
-                MessageBox.Show("PollPlugin ist nicht geladen!");
+                MessageBox.Show("PollPlugin nicht geladen!");
                 return;
             }
             try
             {
-                if (SelectedChannel == null) return;
-                var pollMsg = SelectedChannel.ChatMessages
+                var pollMsg = SelectedChannel?.ChatMessages
                     .FirstOrDefault(m => m.Type == MessageType.Poll);
-                if (pollMsg == null) return;
+                if (pollMsg == null)
+                {
+                    MessageBox.Show("Keine Poll-Nachricht vorhanden.");
+                    return;
+                }
 
-                await _pollPlugin.DeletePoll(pollMsg.PollId.ToString());
+                await _pollPlugin.DeletePoll(pollMsg.PollTitle);
                 MessageBox.Show("Umfrage gelöscht!");
-
                 SelectedChannel.ChatMessages.Remove(pollMsg);
             }
             catch (Exception ex)
