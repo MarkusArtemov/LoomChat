@@ -623,14 +623,14 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
             string chosenOption = param as string;
             if (string.IsNullOrEmpty(chosenOption))
             {
-                MessageBox.Show("Keine Option übergeben.");
+                MessageBox.Show("Keine Option ausgewählt.");
                 return;
             }
 
             try
             {
-                if (SelectedChannel == null) return;
-                var pollMsg = SelectedChannel.ChatMessages
+                // Passenden Poll-Nachricht suchen, z.B. 
+                var pollMsg = SelectedChannel?.ChatMessages
                     .FirstOrDefault(m => m.Type == MessageType.Poll);
                 if (pollMsg == null)
                 {
@@ -638,7 +638,9 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                     return;
                 }
 
+                // PollId => string
                 await _pollPlugin.Vote(pollMsg.PollId.ToString(), chosenOption);
+
                 MessageBox.Show($"Vote abgegeben für '{chosenOption}'!");
             }
             catch (Exception ex)
@@ -646,6 +648,7 @@ namespace De.Hsfl.LoomChat.Client.ViewModels
                 MessageBox.Show("Fehler bei VotePoll: " + ex.Message);
             }
         }
+
 
         private async void ExecuteClosePoll()
         {

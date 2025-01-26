@@ -20,5 +20,6 @@ namespace De.Hsfl.LoomChat.Common.Dtos
         public bool IsClosed { get; set; }
         public string PollTitle { get; set; }
         public List<string> PollOptions { get; set; }
+        public string SelectedPollOption { get; set; }
     }
 }

@@ -61,7 +61,7 @@
             </Border>
         </DataTemplate>
 
-        <!-- 3) PollMessageTemplate -->
+        <!-- 3) PollMessageTemplate (Umfragen) -->
         <DataTemplate x:Key="PollMessageTemplate">
             <Border Background="#FFE4B5"
                     Padding="10" 
@@ -263,7 +263,7 @@
                                     Width="80"
                                     Margin="0,0,10,0" />
 
-                            <!-- NEU: "Umfrage erstellen" wird nur sichtbar, wenn Plugin geladen -->
+                            <!-- "Umfrage erstellen" wird nur sichtbar, wenn Plugin geladen -->
                             <Button Content="Umfrage erstellen"
                                     Command="{Binding OpenPollPopupCommand}"
                                     Width="120"
