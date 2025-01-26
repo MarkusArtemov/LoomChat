@@ -30,6 +30,7 @@ namespace De.Hsfl.LoomChat.Common.Dtos
             FileType = fileType;
         }
 
-        public string FullVersionName => $"v{VersionNumber} {FileExtension}";
+        // Vollständiger "Version-Name"
+        public string FullVersionName => $"v{VersionNumber}{FileExtension}";
     }
 }

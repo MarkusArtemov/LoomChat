@@ -20,8 +20,7 @@ namespace De.Hsfl.LoomChat.File.Controllers
 
         private int GetCurrentUserId()
         {
-            var userClaim = User.FindFirst("sub")
-                            ?? User.FindFirst(ClaimTypes.NameIdentifier);
+            var userClaim = User.FindFirst("sub") ?? User.FindFirst(ClaimTypes.NameIdentifier);
             if (userClaim == null) return 0;
             return int.Parse(userClaim.Value);
         }
@@ -69,6 +68,9 @@ namespace De.Hsfl.LoomChat.File.Controllers
             return Ok(vers);
         }
 
+        /// <summary>
+        /// Laden einer bestimmten Version als Download
+        /// </summary>
         [HttpGet("{documentId}/version/{versionNumber}")]
         public async Task<IActionResult> DownloadVersion(int documentId, int versionNumber)
         {
@@ -76,15 +78,21 @@ namespace De.Hsfl.LoomChat.File.Controllers
             if (downloadResult == null)
                 return NotFound("Document or version not found");
 
-            return File(
-                downloadResult.FileStream,
-                downloadResult.ContentType,
-                downloadResult.FileName
-            );
+            // Dateiname absichern
+            var safeFileName = Path.GetFileName(downloadResult.FileName);
+            if (string.IsNullOrWhiteSpace(safeFileName))
+                safeFileName = "download.bin";
+
+            // ContentType absichern - darf nicht leer sein
+            var contentType = string.IsNullOrWhiteSpace(downloadResult.ContentType)
+                ? "application/octet-stream"
+                : downloadResult.ContentType;
+
+            return File(downloadResult.FileStream, contentType, safeFileName);
         }
 
         // ------------------------------------------------
-        // DELETE Document => + versions => broadcast
+        // DELETE Document => samt Versionen => broadcast
         // ------------------------------------------------
         [HttpDelete("{documentId}")]
         public async Task<IActionResult> DeleteDocument(int documentId)

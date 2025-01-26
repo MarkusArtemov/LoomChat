@@ -13,6 +13,7 @@ namespace De.Hsfl.LoomChat.Common.Dtos
 
         // z.B. "User_123" oder realer Username
         public string OwnerName { get; set; } = string.Empty;
+
         public string FileExtension { get; set; } = string.Empty;
 
         public DocumentResponse() { }
@@ -37,6 +38,7 @@ namespace De.Hsfl.LoomChat.Common.Dtos
             FileExtension = fileExtension;
         }
 
+        // <-- NEU: Voller Name incl. Extension -->
         public string FullName => Name + FileExtension;
     }
 }

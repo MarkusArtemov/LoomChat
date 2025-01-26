@@ -29,14 +29,23 @@ namespace De.Hsfl.LoomChat.File.Services
             _fileHubContext = fileHubContext;
         }
 
+        /// <summary>
+        /// Erzeugt ein neues Dokument (noch keine Datei-Version).
+        /// </summary>
         public async Task<DocumentResponse> CreateDocumentAsync(CreateDocumentRequest request, int userId)
         {
+            if (string.IsNullOrWhiteSpace(request.Name))
+            {
+                request.Name = "Document";
+            }
+
             var doc = new Document
             {
                 Name = request.Name,
                 ChannelId = request.ChannelId,
                 OwnerUserId = userId,
                 CreatedAt = System.DateTime.UtcNow,
+                // Standard-Werte:
                 FileType = "application/octet-stream",
                 FileExtension = ".bin"
             };
@@ -63,31 +72,43 @@ namespace De.Hsfl.LoomChat.File.Services
             return docResponse;
         }
 
+        /// <summary>
+        /// Lädt eine neue Version hoch (Multiform-data).
+        /// </summary>
         public async Task<DocumentVersionResponse?> UploadDocumentVersionAsync(int documentId, IFormFile file, int currentUserId)
         {
             var doc = await _context.Documents
                 .Include(d => d.DocumentVersions)
                 .FirstOrDefaultAsync(d => d.Id == documentId);
             if (doc == null) return null;
+
+            // Nur der Besitzer darf hochladen
             if (doc.OwnerUserId != currentUserId) return null;
 
+            // Prüfen, welche Extension die hochgeladene Datei hat
             var extension = Path.GetExtension(file.FileName);
+            if (string.IsNullOrWhiteSpace(extension))
+            {
+                extension = ".bin";
+            }
+
+            // Falls das Document noch keine Versions hat, setzen wir die Extension
+            // (Man könnte stattdessen auch immer überschreiben.)
             if (!doc.DocumentVersions.Any())
             {
-                // setze FileExtension
-                doc.FileExtension = string.IsNullOrWhiteSpace(extension) ? ".bin" : extension;
+                doc.FileExtension = extension;
             }
-            else
+            // doc.FileExtension != extension => man kann hier meckern oder ignorieren
+
+            // MIME‐Type absichern
+            var contentType = file.ContentType;
+            if (string.IsNullOrWhiteSpace(contentType))
             {
-                // Falls sie existiert, check ob extension gleich bleibt
-                if (!string.IsNullOrWhiteSpace(extension) && extension != doc.FileExtension)
-                    return null;
+                contentType = "application/octet-stream";
             }
+            doc.FileType = contentType; // fix: nie leer lassen
 
-            var contentType = file.ContentType ?? "application/octet-stream";
-            doc.FileType = contentType;
-
-            // Versionsnummer
+            // Neue Versionsnummer
             int newVersionNumber = doc.DocumentVersions.Any()
                 ? doc.DocumentVersions.Max(v => v.VersionNumber) + 1
                 : 1;
@@ -96,9 +117,11 @@ namespace De.Hsfl.LoomChat.File.Services
             var serverFileName = $"{docNameSafe}_v{newVersionNumber}{doc.FileExtension}";
             var fullPath = Path.Combine(_storageOptions.StoragePath, serverFileName);
 
-            // Speichere Datei
-            using var stream = new FileStream(fullPath, FileMode.Create);
-            await file.CopyToAsync(stream);
+            // Datei speichern
+            using (var stream = new FileStream(fullPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
 
             var newVersion = new DocumentVersion
             {
@@ -120,6 +143,7 @@ namespace De.Hsfl.LoomChat.File.Services
                 doc.FileType
             );
 
+            // Broadcast VersionCreated
             await _fileHubContext.Clients
                 .Group($"file_channel_{doc.ChannelId}")
                 .SendAsync("VersionCreated", versionResponse);
@@ -137,7 +161,7 @@ namespace De.Hsfl.LoomChat.File.Services
             var list = new List<DocumentResponse>();
             foreach (var d in docs)
             {
-                var ownerName = "User_" + d.OwnerUserId;
+                var ownerName = "User_" + d.OwnerUserId; // Bsp.: Nutzername
                 list.Add(new DocumentResponse(
                     d.Id,
                     d.Name,
@@ -169,6 +193,9 @@ namespace De.Hsfl.LoomChat.File.Services
             )).ToList();
         }
 
+        /// <summary>
+        /// Liefert einen Stream zum Herunterladen einer bestimmten Version.
+        /// </summary>
         public async Task<FileDownloadResult?> DownloadDocumentVersionAsync(int documentId, int versionNumber)
         {
             var doc = await _context.Documents.FindAsync(documentId);
@@ -178,13 +205,22 @@ namespace De.Hsfl.LoomChat.File.Services
                 .FirstOrDefaultAsync(v => v.DocumentId == documentId && v.VersionNumber == versionNumber);
             if (version == null) return null;
 
-            if (!global::System.IO.File.Exists(version.StoragePath)) return null;
+            if (!System.IO.File.Exists(version.StoragePath)) return null;
 
+            // Stream öffnen
             var stream = new FileStream(version.StoragePath, FileMode.Open, FileAccess.Read);
+
+            // z.B. "MeinDokument_v1.pdf"
             var docNameSafe = SanitizeFileName(doc.Name);
             var fileName = $"{docNameSafe}_v{version.VersionNumber}{doc.FileExtension}";
+            if (string.IsNullOrWhiteSpace(fileName))
+                fileName = "download.bin"; // Fallback
 
-            var contentType = doc.FileType ?? "application/octet-stream";
+            var contentType = doc.FileType;
+            if (string.IsNullOrWhiteSpace(contentType))
+            {
+                contentType = "application/octet-stream";
+            }
 
             return new FileDownloadResult
             {
@@ -195,7 +231,7 @@ namespace De.Hsfl.LoomChat.File.Services
         }
 
         // -------------------------------------------------------
-        // LÖSCHEN: EIN DOKUMENT
+        // DOKUMENT + Versionen löschen
         // -------------------------------------------------------
         public async Task<bool> DeleteDocumentAsync(int documentId, int currentUserId)
         {
@@ -204,14 +240,15 @@ namespace De.Hsfl.LoomChat.File.Services
                 .FirstOrDefaultAsync(d => d.Id == documentId);
             if (doc == null) return false;
 
+            // Nur der Besitzer
             if (doc.OwnerUserId != currentUserId) return false;
 
             // Physische Dateien entfernen
             foreach (var ver in doc.DocumentVersions)
             {
-                if (global::System.IO.File.Exists(ver.StoragePath))
+                if (System.IO.File.Exists(ver.StoragePath))
                 {
-                    global::System.IO.File.Delete(ver.StoragePath);
+                    System.IO.File.Delete(ver.StoragePath);
                 }
             }
 
@@ -227,7 +264,7 @@ namespace De.Hsfl.LoomChat.File.Services
         }
 
         // -------------------------------------------------------
-        // LÖSCHEN: EINE EINZELNE VERSION
+        // Eine einzelne Version löschen
         // -------------------------------------------------------
         public async Task<bool> DeleteVersionAsync(int documentId, int versionNumber, int currentUserId)
         {
@@ -235,15 +272,17 @@ namespace De.Hsfl.LoomChat.File.Services
                 .Include(d => d.DocumentVersions)
                 .FirstOrDefaultAsync(d => d.Id == documentId);
             if (doc == null) return false;
+
+            // Nur der Besitzer
             if (doc.OwnerUserId != currentUserId) return false;
 
             var version = doc.DocumentVersions
                 .FirstOrDefault(v => v.VersionNumber == versionNumber);
             if (version == null) return false;
 
-            if (global::System.IO.File.Exists(version.StoragePath))
+            if (System.IO.File.Exists(version.StoragePath))
             {
-                global::System.IO.File.Delete(version.StoragePath);
+                System.IO.File.Delete(version.StoragePath);
             }
 
             _context.DocumentVersions.Remove(version);
@@ -259,6 +298,8 @@ namespace De.Hsfl.LoomChat.File.Services
 
         private string SanitizeFileName(string input)
         {
+            if (string.IsNullOrWhiteSpace(input)) return "Document";
+
             foreach (var c in Path.GetInvalidFileNameChars())
             {
                 input = input.Replace(c, '_');
