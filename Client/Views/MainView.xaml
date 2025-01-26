@@ -6,38 +6,112 @@
       Title="MainView"
       Loaded="MainViewLoaded">
 
+    <!-- 1) Datenkontext -->
     <Page.DataContext>
         <local:MainViewModel />
     </Page.DataContext>
 
+    <!-- 2) Ressourcen -->
     <Page.Resources>
+        <!-- A) BoolToVisibilityConverter -->
         <converter:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
 
-        <DataTemplate x:Key="MyMessageTemplate">
-            <Border Background="#DCF8C6" Padding="10" Margin="10" CornerRadius="10" HorizontalAlignment="Right">
+        <!-- B) DataTemplates für Nachrichten -->
+
+        <!-- 1) Meine Textnachricht (rechte Bubble) -->
+        <DataTemplate x:Key="MyTextMessageTemplate">
+            <Border Background="#DCF8C6" 
+                    Padding="10" 
+                    Margin="10" 
+                    CornerRadius="10" 
+                    HorizontalAlignment="Right">
                 <StackPanel>
-                    <TextBlock Text="Ich" FontWeight="Bold" Margin="0,0,0,5"/>
+                    <TextBlock Text="Ich" 
+                               FontWeight="Bold" 
+                               Margin="0,0,0,5"/>
+                    <!-- Textinhalt -->
                     <TextBlock Text="{Binding Content}" />
-                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}" FontSize="10" HorizontalAlignment="Right"/>
+                    <!-- Uhrzeit -->
+                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}" 
+                               FontSize="10" 
+                               HorizontalAlignment="Right"/>
                 </StackPanel>
             </Border>
         </DataTemplate>
 
-        <DataTemplate x:Key="OtherMessageTemplate">
-            <Border Background="LightGray" Padding="10" Margin="10" CornerRadius="10" HorizontalAlignment="Left">
+        <!-- 2) Fremde Textnachricht (linke Bubble) -->
+        <DataTemplate x:Key="OtherTextMessageTemplate">
+            <Border Background="LightGray" 
+                    Padding="10" 
+                    Margin="10" 
+                    CornerRadius="10" 
+                    HorizontalAlignment="Left">
                 <StackPanel>
-                    <TextBlock Text="{Binding SenderUserId}" />
+                    <!-- SenderUserId oder ggf. Username -->
+                    <TextBlock Text="{Binding SenderUserId}" 
+                               FontWeight="Bold" 
+                               Margin="0,0,0,5"/>
+                    <!-- Textinhalt -->
                     <TextBlock Text="{Binding Content}" />
-                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}" FontSize="10" HorizontalAlignment="Right"/>
+                    <!-- Uhrzeit -->
+                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}" 
+                               FontSize="10" 
+                               HorizontalAlignment="Right"/>
                 </StackPanel>
             </Border>
         </DataTemplate>
 
-        <converter:MessageTemplateSelector x:Key="MessageTemplateSelector"
-                                           MyMessageTemplate="{StaticResource MyMessageTemplate}"
-                                           OtherMessageTemplate="{StaticResource OtherMessageTemplate}" />
+        <!-- 3) PollMessageTemplate -->
+        <DataTemplate x:Key="PollMessageTemplate">
+            <Border Background="#FFE4B5"
+                    Padding="10" 
+                    Margin="10" 
+                    CornerRadius="10"
+                    HorizontalAlignment="Left">
+                <StackPanel>
+                    <TextBlock Text="Umfrage:" 
+                               FontWeight="Bold" 
+                               FontSize="14"/>
+                    <TextBlock Text="{Binding PollTitle}" 
+                               Margin="0,0,0,5" 
+                               FontWeight="Bold"/>
+
+                    <!-- Liste der Optionen mit "Vote"-Button -->
+                    <ItemsControl ItemsSource="{Binding PollOptions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                    <TextBlock Text="{Binding}" 
+                                               VerticalAlignment="Center"/>
+                                    <!-- "Vote" Button => CommandParameter = dieser Optionen-String -->
+                                    <Button Content="Vote"
+                                            Margin="10,0,0,0"
+                                            Command="{Binding DataContext.VotePollCommand, 
+                                                      RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Uhrzeit -->
+                    <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}" 
+                               FontSize="10" 
+                               HorizontalAlignment="Right"
+                               Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- 4) MessageTemplateSelector -->
+        <converter:MessageTemplateSelector 
+            x:Key="MessageTemplateSelector"
+            MyTextMessageTemplate="{StaticResource MyTextMessageTemplate}"
+            OtherTextMessageTemplate="{StaticResource OtherTextMessageTemplate}"
+            PollMessageTemplate="{StaticResource PollMessageTemplate}" />
     </Page.Resources>
 
+    <!-- 3) Hauptlayout -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="15*"/>
@@ -48,14 +122,34 @@
             <ColumnDefinition Width="80*"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="10" Background="#E8E8E8">
+        <!-- Header / Titel -->
+        <Border Grid.Row="0" 
+                Grid.ColumnSpan="2" 
+                Padding="10" 
+                Background="#E8E8E8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="LoomChat" FontSize="24" FontWeight="Bold" VerticalAlignment="Center"/>
-                <StackPanel Orientation="Horizontal" Grid.Column="1" VerticalAlignment="Center">
+
+                <!-- Titel -->
+                <TextBlock Text="LoomChat" 
+                           FontSize="24" 
+                           FontWeight="Bold" 
+                           VerticalAlignment="Center"/>
+
+                <StackPanel Orientation="Horizontal" 
+                            Grid.Column="1" 
+                            VerticalAlignment="Center">
+                    <!-- NEU: Button zum Laden des Plugins -->
+                    <Button Content="Load Poll Plugin"
+                            Command="{Binding LoadPollPluginCommand}"
+                            Width="130"
+                            Height="30"
+                            Margin="0,0,10,0"/>
+
+                    <!-- Logout -->
                     <Button Content="Logout"
                             Command="{Binding LogoutCommand}"
                             Width="100"
@@ -64,7 +158,11 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Grid.Column="0" Background="#F4F4F4" Padding="10">
+        <!-- Linke Spalte -->
+        <Border Grid.Row="1" 
+                Grid.Column="0" 
+                Background="#F4F4F4" 
+                Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
@@ -73,6 +171,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
+                <!-- Direktnachrichten -->
                 <GroupBox Grid.Row="0" Header="Direktnachrichten" Margin="0,0,0,10">
                     <ListView ItemsSource="{Binding DirectMessages}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -85,14 +184,16 @@
                     </ListView>
                 </GroupBox>
 
-                <Button Grid.Row="1"
-                        Content="Channel erstellen"
-                        Command="{Binding OpenPopupCommand}"
-                        Width="120"
-                        Height="30"
-                        Margin="0,0,0,10"/>
+                <!-- Falls Sie noch weitere Buttons hier möchten -->
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,5">
+                    <Button Content="Channel erstellen"
+                            Command="{Binding OpenPopupCommand}"
+                            Width="120"
+                            Height="30"/>
+                </StackPanel>
 
-                <GroupBox Grid.Row="2" Header="Channels" Margin="0,0,0,10">
+                <!-- Channels -->
+                <GroupBox Grid.Row="2" Header="Channels" Margin="0,10,0,10">
                     <ListView ItemsSource="{Binding OpenChats}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
                               MouseDoubleClick="ChannelListViewMouseDoubleClick">
@@ -104,6 +205,7 @@
                     </ListView>
                 </GroupBox>
 
+                <!-- User -->
                 <GroupBox Grid.Row="3" Header="User">
                     <ListView ItemsSource="{Binding Users}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -118,90 +220,102 @@
             </Grid>
         </Border>
 
-        <Border Grid.Row="1" Grid.Column="1" Padding="10" Background="#F8F8F8">
+        <!-- Rechte Spalte: Tabs (Chat / Dateien) -->
+        <Border Grid.Row="1" 
+                Grid.Column="1" 
+                Padding="10" 
+                Background="#F8F8F8">
             <TabControl>
+                <!-- TabItem: Chat -->
                 <TabItem Header="Chat">
                     <Grid>
-                        <Grid x:Name="ChatGrid"
-                              Visibility="{Binding ChatVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="*"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-                                <ItemsControl ItemsSource="{Binding SelectedChannel.ChatMessages}"
-                                              ItemTemplateSelector="{StaticResource MessageTemplateSelector}"/>
-                            </ScrollViewer>
+                        <!-- Nachrichtenliste -->
+                        <ScrollViewer Grid.Row="0" 
+                                      VerticalScrollBarVisibility="Auto"
+                                      Visibility="{Binding ChatVisible, 
+                                        Converter={StaticResource BoolToVisibilityConverter}}">
+                            <ItemsControl ItemsSource="{Binding SelectedChannel.ChatMessages}"
+                                          ItemTemplateSelector="{StaticResource MessageTemplateSelector}" />
+                        </ScrollViewer>
 
-                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
-                                <TextBox Text="{Binding NewMessage}"
-                                         VerticalAlignment="Center"
-                                         Width="500"
-                                         Margin="0,0,10,0"/>
-                                <Button Content="Senden"
-                                        Command="{Binding SendMessageCommand}"
-                                        Width="100"
-                                        Height="30"/>
-                            </StackPanel>
-                        </Grid>
-
+                        <!-- Fallback: Kein Channel -->
                         <TextBlock Text="Bitte wähle einen Chat aus."
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"
                                    FontSize="16"
                                    FontWeight="Bold"
-                                   Visibility="{Binding IsChatNotVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                   Visibility="{Binding IsChatNotVisible, 
+                                        Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                        <!-- Eingabebereich -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,10,0,0">
+                            <TextBox Text="{Binding NewMessage}"
+                                     VerticalAlignment="Center"
+                                     Width="400"
+                                     Margin="0,0,10,0"/>
+                            <Button Content="Senden"
+                                    Command="{Binding SendMessageCommand}"
+                                    Width="80"
+                                    Margin="0,0,10,0" />
+
+                            <!-- NEU: "Umfrage erstellen" wird nur sichtbar, wenn Plugin geladen -->
+                            <Button Content="Umfrage erstellen"
+                                    Command="{Binding OpenPollPopupCommand}"
+                                    Width="120"
+                                    Visibility="{Binding IsPollPluginLoaded, 
+                                        Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        </StackPanel>
                     </Grid>
                 </TabItem>
 
+                <!-- TabItem: Dateien -->
                 <TabItem Header="Dateien">
                     <Grid>
-                        <!-- 
-             (A) Hinweis-Text, wenn kein Channel ausgewählt 
-                 => IsChatNotVisible == true
-        -->
                         <TextBlock Text="Bitte wähle einen Chat aus."
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"
-                   FontSize="16"
-                   FontWeight="Bold"
-                   Visibility="{Binding IsChatNotVisible, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   Visibility="{Binding IsChatNotVisible, 
+                                        Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                        <!-- 
-             (B) Der eigentliche Dateien-Bereich,
-                 sichtbar nur wenn ChatVisible == true
-        -->
-                        <Grid Visibility="{Binding ChatVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <Grid Visibility="{Binding ChatVisible, 
+                                          Converter={StaticResource BoolToVisibilityConverter}}">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="2*"/>
                                 <RowDefinition Height="1*"/>
                             </Grid.RowDefinitions>
 
+                            <!-- Datei-Buttons -->
                             <StackPanel Orientation="Horizontal" Grid.Row="0">
                                 <Button Content="Neues Dokument"
-                        Command="{Binding CreateDocumentCommand}"
-                        Margin="0,0,10,0"/>
+                                        Command="{Binding CreateDocumentCommand}"
+                                        Margin="0,0,10,0"/>
                                 <Button Content="Upload Version"
-                        Command="{Binding UploadVersionCommand}"
-                        Margin="0,0,10,0"/>
+                                        Command="{Binding UploadVersionCommand}"
+                                        Margin="0,0,10,0"/>
                                 <Button Content="Download Version"
-                        Command="{Binding DownloadVersionCommand}"
-                        Margin="0,0,10,0"/>
-
+                                        Command="{Binding DownloadVersionCommand}"
+                                        Margin="0,0,10,0"/>
                                 <Button Content="Delete Version"
-                        Command="{Binding DeleteVersionCommand}"
-                        Margin="0,0,10,0"/>
+                                        Command="{Binding DeleteVersionCommand}"
+                                        Margin="0,0,10,0"/>
                                 <Button Content="Delete Document"
-                        Command="{Binding DeleteDocumentCommand}"
-                        Margin="0,0,10,0"/>
+                                        Command="{Binding DeleteDocumentCommand}"
+                                        Margin="0,0,10,0"/>
                             </StackPanel>
 
+                            <!-- Dokumente -->
                             <GroupBox Header="Dokumente" Grid.Row="1" Margin="0,5,0,5">
                                 <ListView ItemsSource="{Binding Documents}"
-                          SelectedItem="{Binding SelectedDocument}"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                          SelectedItem="{Binding SelectedDocument}"
+                                          ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListView.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Name}"/>
@@ -210,10 +324,11 @@
                                 </ListView>
                             </GroupBox>
 
+                            <!-- Versionen -->
                             <GroupBox Header="Versionen" Grid.Row="2">
                                 <ListView ItemsSource="{Binding Versions}"
-                          SelectedItem="{Binding SelectedVersion}"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                          SelectedItem="{Binding SelectedVersion}"
+                                          ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListView.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="Version: ">
@@ -230,10 +345,10 @@
                         </Grid>
                     </Grid>
                 </TabItem>
-
             </TabControl>
         </Border>
 
+        <!-- Popup: Channel erstellen -->
         <Popup x:Name="CreateChannelPopup"
                Placement="Center"
                IsOpen="{Binding PopupOpen}"
@@ -256,6 +371,64 @@
                                 Margin="5"/>
                         <Button Content="Erstellen"
                                 Command="{Binding CreateChannelCommand}"
+                                Width="80"
+                                Margin="5"/>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </Popup>
+
+        <!-- Popup: Umfrage erstellen -->
+        <Popup x:Name="PollCreatePopup"
+               Placement="Center"
+               IsOpen="{Binding PollPopupOpen}"
+               StaysOpen="False">
+            <Border Background="White"
+                    BorderBrush="Gray"
+                    BorderThickness="1"
+                    Padding="20"
+                    Width="400">
+                <StackPanel>
+                    <TextBlock Text="Neue Umfrage erstellen"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Margin="0,0,0,10"/>
+
+                    <!-- Titel -->
+                    <TextBlock Text="Titel:"/>
+                    <TextBox Text="{Binding PollTitle}" 
+                             Width="300" 
+                             Margin="0,0,0,10"/>
+
+                    <!-- Optionen -->
+                    <TextBlock Text="Antwortoptionen:"/>
+                    <ListBox ItemsSource="{Binding PollOptions}"
+                             Height="100"
+                             Margin="0,0,0,10">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <!-- Zeile zum Hinzufügen einer Option -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <TextBox Text="{Binding NewOptionText}" 
+                                 Width="200" 
+                                 Margin="0,0,10,0"/>
+                        <Button Content="Option hinzufügen"
+                                Command="{Binding AddPollOptionCommand}"/>
+                    </StackPanel>
+
+                    <!-- Action-Buttons -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Abbrechen"
+                                Command="{Binding ClosePollPopupCommand}"
+                                Width="80"
+                                Margin="5"/>
+                        <Button Content="Erstellen"
+                                Command="{Binding CreatePollCommand}"
                                 Width="80"
                                 Margin="5"/>
                     </StackPanel>

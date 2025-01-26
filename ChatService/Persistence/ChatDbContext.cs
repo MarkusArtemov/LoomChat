@@ -13,9 +13,12 @@ namespace De.Hsfl.LoomChat.Chat.Persistence
         // Vorhandene DbSets
         public DbSet<Channel> Channels { get; set; } = null!;
         public DbSet<ChannelMember> ChannelMembers { get; set; } = null!;
+
+        // WICHTIG: Wir benutzen nun das Basistyp-Feld "ChatMessage"
+        // für TPH => TextMessage & PollMessage
         public DbSet<ChatMessage> ChatMessages { get; set; } = null!;
 
-        // NEU: Für Polls
+        // Poll
         public DbSet<Poll> Polls { get; set; } = null!;
         public DbSet<PollOption> PollOptions { get; set; } = null!;
 
@@ -47,8 +50,7 @@ namespace De.Hsfl.LoomChat.Chat.Persistence
                 entity.ToTable("ChannelMembers");
                 entity.HasKey(cm => new { cm.ChannelId, cm.UserId });
 
-                entity.Property(cm => cm.Role)
-                      .HasConversion<string>();
+                entity.Property(cm => cm.Role).HasConversion<string>();
 
                 entity.HasOne(cm => cm.Channel)
                       .WithMany(c => c.ChannelMembers)
@@ -56,23 +58,45 @@ namespace De.Hsfl.LoomChat.Chat.Persistence
             });
 
             // ------------------
-            // ChatMessage
+            // ChatMessage (TPH)
             // ------------------
+            // Basisklasse => "ChatMessages" (eine Tabelle)
             modelBuilder.Entity<ChatMessage>(entity =>
             {
                 entity.ToTable("ChatMessages");
                 entity.HasKey(m => m.Id);
 
-                entity.Property(m => m.Content)
-                      .IsRequired()
-                      .HasMaxLength(1000);
+                // TPH: wir definieren einen Discriminator "MessageType"
+                entity
+                    .HasDiscriminator<string>("MessageType")
+                    .HasValue<ChatMessage>("text")   // Default: "text" für ChatMessage
+                    .HasValue<TextMessage>("text")   // Noch genauer: "text" für TextMessage
+                    .HasValue<PollMessage>("poll");
 
+                // Felder in der Basisklasse
                 entity.Property(m => m.SentAt)
                       .IsRequired();
 
                 entity.HasOne(m => m.Channel)
                       .WithMany(c => c.ChatMessages)
                       .HasForeignKey(m => m.ChannelId);
+            });
+
+            // Falls Sie Einschränkungen auf TextMessage.Content wünschen:
+            modelBuilder.Entity<TextMessage>(entity =>
+            {
+                entity.Property(tm => tm.Content)
+                      .IsRequired()
+                      .HasMaxLength(1000);
+            });
+
+            // PollMessage => relationship zu Poll
+            modelBuilder.Entity<PollMessage>(entity =>
+            {
+                // z.B. 1:1 => eine PollMessage referenziert genau 1 Poll
+                entity.HasOne(pm => pm.Poll)
+                      .WithMany() // oder .WithMany(x => x.PollMessages) wenn Sie das benötigen
+                      .HasForeignKey(pm => pm.PollId);
             });
 
             // ------------------
@@ -90,11 +114,9 @@ namespace De.Hsfl.LoomChat.Chat.Persistence
                 entity.Property(p => p.CreatedAt)
                       .IsRequired();
 
-                // Relationship: Channel 1 - * Poll
                 entity.HasOne(p => p.Channel)
                       .WithMany(c => c.Polls)
                       .HasForeignKey(p => p.ChannelId);
-
             });
 
             // ------------------
@@ -109,7 +131,6 @@ namespace De.Hsfl.LoomChat.Chat.Persistence
                       .IsRequired()
                       .HasMaxLength(200);
 
-                // Relationship: Poll 1 - * PollOption
                 entity.HasOne(o => o.Poll)
                       .WithMany(p => p.Options)
                       .HasForeignKey(o => o.PollId);

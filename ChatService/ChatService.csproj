@@ -37,9 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
     <Folder Include="Persistence\" />
-    <Folder Include="Plugins\PollPlugin\" />
   </ItemGroup>
 
   <ItemGroup>

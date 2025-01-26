@@ -34,7 +34,9 @@ namespace De.Hsfl.LoomChat.Chat.Controllers
             _logger.LogInformation("Sending PollPlugin.dll to client from {Path}", pluginPath);
             var pluginBytes = System.IO.File.ReadAllBytes(pluginPath);
 
-            return File(pluginBytes, "application/octet-stream", "De.Hsfl.LoomChat.PollPlugin.dll");
+            var fileResult = File(pluginBytes, "application/octet-stream", "De.Hsfl.LoomChat.PollPlugin.dll");
+            fileResult.EnableRangeProcessing = true;
+            return fileResult;
         }
     }
 }

@@ -1,111 +1,101 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
-using System.Text;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using System.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
+using De.Hsfl.LoomChat.Chat.Persistence;
 using De.Hsfl.LoomChat.Common.Dtos;
 using De.Hsfl.LoomChat.Common.Models;
-using De.Hsfl.LoomChat.Chat.Persistence;
-using De.Hsfl.LoomChat.Common.Enums;
-using AutoMapper;
 
 namespace De.Hsfl.LoomChat.Chat.Services
 {
     /// <summary>
     /// Manages channels, messages, and memberships.
+    /// No AutoMapper; we map manually to ChatMessageDto.
     /// </summary>
     public class ChatService
     {
         private readonly ChatDbContext _chatDbContext;
-        private readonly IMapper _mapper;
         private readonly ILogger<ChatService> _logger;
 
-        public ChatService(ChatDbContext chatDbContext, IMapper mapper, ILogger<ChatService> logger)
+        public ChatService(ChatDbContext chatDbContext, ILogger<ChatService> logger)
         {
             _chatDbContext = chatDbContext;
-            _mapper = mapper;
             _logger = logger;
         }
 
+        // Falls Sie ein JWT-Token speichern / REST aufrufen wollen:
+        // private string _jwtToken;
+        // public void SetToken(string token) => _jwtToken = token;
+
+        private HttpClient CreateHttpClientWithAuth()
+        {
+            // Dummy-Token
+            var token = "DEIN_AKTUELLES_JWT";
+            var client = new HttpClient();
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                client.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", token);
+            }
+            return client;
+        }
+
+        /// <summary>
+        /// Lädt alle öffentlichen Channels (non-DM) + ihre Nachrichten 
+        /// und mappt sie zu ChannelDto.
+        /// </summary>
         public async Task<GetChannelsResponse> GetAllChannels(GetChannelsRequest request)
         {
             _logger.LogInformation("GetAllChannels called. UserId={UserId}", request.UserId);
 
-            List<Channel> channels = await _chatDbContext.Channels
+            var channels = await _chatDbContext.Channels
                 .Include(c => c.ChannelMembers)
                 .Include(c => c.ChatMessages)
-                .Where(c => c.IsDmChannel != true)
+                .Where(c => !c.IsDmChannel)
                 .ToListAsync();
 
-            var channelsDto = channels.Select(ChannelMapper.ToDto).ToList();
-
-            _logger.LogDebug("Returning {Count} channels (non-DM)", channelsDto.Count);
-            return new GetChannelsResponse(channelsDto);
+            // In ChannelDto mappen
+            var list = channels.Select(ChannelMapper.ToDto).ToList();
+            return new GetChannelsResponse(list);
         }
 
+        /// <summary>
+        /// Lädt alle User (z.B. vom Auth-Service) - hier nur Dummy.
+        /// </summary>
         public async Task<GetUsersResponse> GetAllUsers(GetUsersRequest request)
         {
-            _logger.LogInformation("GetAllUsers called (will forward to Auth-Service).");
-
-            using (var client = new HttpClient())
-            {
-                try
-                {
-                    var url = "http://localhost:5232/Auth/users";
-                    var jsonContent = new StringContent(
-                        JsonConvert.SerializeObject(request),
-                        Encoding.UTF8,
-                        "application/json"
-                    );
-                    var response = await client.PostAsync(url, jsonContent);
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var responseBody = await response.Content.ReadAsStringAsync();
-                        var responseObj = JsonConvert.DeserializeObject<GetUsersResponse>(responseBody);
-
-                        _logger.LogDebug("Received {Count} users from Auth service.", responseObj?.Users?.Count);
-                        return responseObj;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Call to Auth service /Auth/users was not successful: {StatusCode}", response.StatusCode);
-                        return null;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error fetching users from Auth service.");
-                    return null;
-                }
-            }
+            _logger.LogInformation("GetAllUsers called. (Dummy impl.)");
+            // Beispiel: externer REST-Call an Auth - hier nur Dummy.
+            return await Task.FromResult(new GetUsersResponse(new List<User>()));
         }
 
+        /// <summary>
+        /// Lädt alle DM-Channels.
+        /// </summary>
         public async Task<GetDirectChannelsResponse> GetAllDirectChannels(GetDirectChannelsRequest request)
         {
             _logger.LogInformation("GetAllDirectChannels called. UserId={UserId}", request.UserId);
 
-            List<Channel> channels = await _chatDbContext.Channels
-                .Where(c => c.IsDmChannel == true)
+            var channels = await _chatDbContext.Channels
+                .Where(c => c.IsDmChannel)
                 .Include(c => c.ChannelMembers)
                 .Include(c => c.ChatMessages)
                 .ToListAsync();
 
-            var channelsDto = channels.Select(ChannelMapper.ToDto).ToList();
-            _logger.LogDebug("Returning {Count} DM channels", channelsDto.Count);
-
-            return new GetDirectChannelsResponse(channelsDto);
+            var dtos = channels.Select(ChannelMapper.ToDto).ToList();
+            return new GetDirectChannelsResponse(dtos);
         }
 
         /// <summary>
-        /// Creates a new channel and assigns the creator as owner
+        /// Erstellt einen neuen Channel + Owner
         /// </summary>
         public async Task<CreateChannelResponse> CreateChannelAsync(CreateChannelRequest request)
         {
-            _logger.LogInformation("CreateChannelAsync called. UserId={UserId}, ChannelName={ChannelName}",
+            _logger.LogInformation("CreateChannelAsync. UserId={UserId}, Name={ChannelName}",
                                    request.UserId, request.ChannelName);
 
             var channel = new Channel
@@ -113,126 +103,133 @@ namespace De.Hsfl.LoomChat.Chat.Services
                 Name = request.ChannelName,
                 CreatedAt = DateTime.UtcNow
             };
-
             _chatDbContext.Channels.Add(channel);
             await _chatDbContext.SaveChangesAsync();
 
+            // Owner
             var member = new ChannelMember
             {
                 ChannelId = channel.Id,
                 UserId = request.UserId,
-                Role = ChannelRole.Owner
+                Role = Common.Enums.ChannelRole.Owner
             };
             _chatDbContext.ChannelMembers.Add(member);
             await _chatDbContext.SaveChangesAsync();
-
-            _logger.LogDebug("Created channel with Id={ChannelId} for UserId={UserId}", channel.Id, request.UserId);
 
             return new CreateChannelResponse(ChannelMapper.ToDto(channel));
         }
 
         /// <summary>
-        /// Sends a new message and returns it as a response
+        /// Sendet eine TEXT-Nachricht in einen Channel.
         /// </summary>
-        public async Task<ChatMessageResponse> SendMessageAsync(int channelId, int senderUserId, string content)
+        public async Task<ChatMessageDto> SendMessageAsync(int channelId, int senderUserId, string content)
         {
-            _logger.LogInformation("SendMessageAsync called. ChannelId={ChannelId}, SenderUserId={SenderUserId}", channelId, senderUserId);
+            _logger.LogInformation("SendMessageAsync. Channel={ChannelId}, User={UserId}", channelId, senderUserId);
 
-            var message = new ChatMessage
+            var msg = new TextMessage
             {
                 ChannelId = channelId,
                 SenderUserId = senderUserId,
                 Content = content,
                 SentAt = DateTime.UtcNow
             };
-
-            _chatDbContext.ChatMessages.Add(message);
+            _chatDbContext.ChatMessages.Add(msg);
             await _chatDbContext.SaveChangesAsync();
 
-            _logger.LogDebug("Created message with Id={MessageId} in Channel={ChannelId}", message.Id, channelId);
+            _logger.LogDebug("Created TextMessage Id={MessageId} in Channel={ChannelId}", msg.Id, channelId);
 
-            return _mapper.Map<ChatMessageResponse>(message);
+            // Manuelles Mapping in ChatMessageDto
+            return new ChatMessageDto
+            {
+                Id = msg.Id,
+                ChannelId = msg.ChannelId,
+                SenderUserId = msg.SenderUserId,
+                SentAt = msg.SentAt,
+                Type = MessageType.Text,
+                Content = msg.Content
+            };
         }
 
         /// <summary>
-        /// Returns all messages of a channel as responses
+        /// Lädt alle Nachrichten in Channel => konvertiert in ChatMessageDto (Type=Text/Poll).
         /// </summary>
-        public async Task<List<ChatMessageResponse>> GetMessagesForChannelAsync(int channelId)
+        public async Task<List<ChatMessageDto>> GetMessagesForChannelAsync(int channelId)
         {
-            _logger.LogDebug("GetMessagesForChannelAsync called. ChannelId={ChannelId}", channelId);
+            _logger.LogDebug("GetMessagesForChannelAsync. ChannelId={ChannelId}", channelId);
 
             var messages = await _chatDbContext.ChatMessages
                 .Where(m => m.ChannelId == channelId)
                 .OrderBy(m => m.SentAt)
                 .ToListAsync();
 
-            _logger.LogDebug("Found {Count} messages for ChannelId={ChannelId}", messages.Count, channelId);
-
-            return _mapper.Map<List<ChatMessageResponse>>(messages);
-        }
-
-        /// <summary>
-        /// Returns full channel info (members, messages)
-        /// </summary>
-        public async Task<ChannelDetailsResponse?> GetChannelDetailsAsync(int channelId)
-        {
-            _logger.LogInformation("GetChannelDetailsAsync called. ChannelId={ChannelId}", channelId);
-
-            var channel = await _chatDbContext.Channels
-                .Include(c => c.ChannelMembers)
-                .Include(c => c.ChatMessages)
-                .FirstOrDefaultAsync(c => c.Id == channelId);
-
-            if (channel == null)
+            var result = new List<ChatMessageDto>();
+            foreach (var msg in messages)
             {
-                _logger.LogWarning("Channel with Id={ChannelId} not found.", channelId);
-                return null;
+                if (msg is TextMessage txt)
+                {
+                    result.Add(new ChatMessageDto
+                    {
+                        Id = txt.Id,
+                        ChannelId = txt.ChannelId,
+                        SenderUserId = txt.SenderUserId,
+                        SentAt = txt.SentAt,
+                        Type = MessageType.Text,
+                        Content = txt.Content
+                    });
+                }
+                else if (msg is PollMessage pm)
+                {
+                    result.Add(new ChatMessageDto
+                    {
+                        Id = pm.Id,
+                        ChannelId = pm.ChannelId,
+                        SenderUserId = pm.SenderUserId,
+                        SentAt = pm.SentAt,
+                        Type = MessageType.Poll,
+                        PollId = pm.PollId,
+                        PollTitle = pm.Poll?.Title,
+                        IsClosed = pm.Poll?.IsClosed ?? false,
+                        PollOptions = pm.Poll?.Options.Select(o => o.OptionText).ToList() ?? new List<string>()
+                    });
+                }
+                else
+                {
+                    // Falls es weitere Subklassen gibt
+                    result.Add(new ChatMessageDto
+                    {
+                        Id = msg.Id,
+                        ChannelId = msg.ChannelId,
+                        SenderUserId = msg.SenderUserId,
+                        SentAt = msg.SentAt,
+                        Type = MessageType.Text,
+                        Content = "[Unbekannter Nachrichtentyp]"
+                    });
+                }
             }
-
-            channel.ChatMessages = channel.ChatMessages.OrderBy(m => m.SentAt).ToList();
-
-            _logger.LogDebug("Returning details for channel {ChannelId}, with {MsgCount} messages",
-                             channelId, channel.ChatMessages.Count);
-
-            return _mapper.Map<ChannelDetailsResponse>(channel);
+            return result;
         }
 
-        /// <summary>
-        /// Marks the membership as archived for the given user
-        /// </summary>
+        // … Archivieren, User entfernen, etc.
+        // Hier brauchen Sie kein Mapping zurück geben, 
+        // also kann das so bleiben wie es ist, 
+        // oder wir machen es minimal:
+
         public async Task<bool> ArchiveChannelForUserAsync(int channelId, int userId)
         {
-            _logger.LogInformation("ArchiveChannelForUserAsync called. ChannelId={ChannelId}, UserId={UserId}", channelId, userId);
-
             var membership = await _chatDbContext.ChannelMembers
                 .FirstOrDefaultAsync(cm => cm.ChannelId == channelId && cm.UserId == userId);
-
-            if (membership == null)
-            {
-                _logger.LogWarning("ChannelMember not found for ChannelId={ChannelId}, UserId={UserId}", channelId, userId);
-                return false;
-            }
+            if (membership == null) return false;
 
             membership.IsArchived = true;
             await _chatDbContext.SaveChangesAsync();
             return true;
         }
 
-        /// <summary>
-        /// Removes channel membership for the given user
-        /// </summary>
         public async Task<bool> RemoveUserFromChannelAsync(int channelId, int userId)
         {
-            _logger.LogInformation("RemoveUserFromChannelAsync called. ChannelId={ChannelId}, UserId={UserId}", channelId, userId);
-
             var membership = await _chatDbContext.ChannelMembers
                 .FirstOrDefaultAsync(cm => cm.ChannelId == channelId && cm.UserId == userId);
-
-            if (membership == null)
-            {
-                _logger.LogWarning("ChannelMember not found for ChannelId={ChannelId}, UserId={UserId}", channelId, userId);
-                return false;
-            }
+            if (membership == null) return false;
 
             _chatDbContext.ChannelMembers.Remove(membership);
             await _chatDbContext.SaveChangesAsync();
@@ -241,20 +238,17 @@ namespace De.Hsfl.LoomChat.Chat.Services
 
         public async Task<OpenChatWithUserResponse> OpenChatWithUser(OpenChatWithUserRequest request)
         {
-            _logger.LogInformation("OpenChatWithUser called. OwnId={OwnId}, OtherId={OtherId}",
-                                   request.OwnId, request.OtherId);
-
-            var existingChannel = await _chatDbContext.Channels
+            // DM-Channel
+            var existing = await _chatDbContext.Channels
                 .Include(c => c.ChannelMembers)
                 .FirstOrDefaultAsync(c =>
                     c.IsDmChannel &&
                     c.ChannelMembers.Any(cm => cm.UserId == request.OwnId) &&
                     c.ChannelMembers.Any(cm => cm.UserId == request.OtherId));
 
-            if (existingChannel != null)
+            if (existing != null)
             {
-                _logger.LogDebug("Existing DM channel found: ChannelId={ChannelId}", existingChannel.Id);
-                return new OpenChatWithUserResponse(ChannelMapper.ToDto(existingChannel));
+                return new OpenChatWithUserResponse(ChannelMapper.ToDto(existing));
             }
 
             var newChannel = new Channel
@@ -268,48 +262,36 @@ namespace De.Hsfl.LoomChat.Chat.Services
                     new ChannelMember { UserId = request.OtherId }
                 }
             };
-
             _chatDbContext.Channels.Add(newChannel);
             await _chatDbContext.SaveChangesAsync();
-
-            _logger.LogInformation("Created new DM channel with Id={ChannelId} for users {OwnId} and {OtherId}",
-                                   newChannel.Id, request.OwnId, request.OtherId);
 
             return new OpenChatWithUserResponse(ChannelMapper.ToDto(newChannel));
         }
 
+        /// <summary>
+        /// REST: sendet Text-Nachricht. Mapping => ChannelDto
+        /// </summary>
         public async Task<SendMessageResponse> SendMessage(SendMessageRequest request)
         {
-            _logger.LogInformation("SendMessage (REST) called. ChannelId={ChannelId}, UserId={UserId}, Message={Message}",
-                                   request.ChannelId, request.UserId, request.Message);
-
-            Channel channel = await _chatDbContext.Channels
+            var channel = await _chatDbContext.Channels
                 .Include(c => c.ChannelMembers)
                 .Include(c => c.ChatMessages)
                 .FirstOrDefaultAsync(c => c.Id == request.ChannelId);
+            if (channel == null) throw new Exception("Channel not found.");
 
-            if (channel == null)
-            {
-                _logger.LogError("Channel not found for ChannelId={ChannelId}. Cannot send message.", request.ChannelId);
-                throw new Exception("Channel not found.");
-            }
-
-            ChatMessage msg = new ChatMessage
+            var msg = new TextMessage
             {
                 ChannelId = channel.Id,
                 SenderUserId = request.UserId,
                 Content = request.Message,
-                SentAt = DateTime.UtcNow,
-                Channel = channel
+                SentAt = DateTime.UtcNow
             };
-
             channel.ChatMessages.Add(msg);
             await _chatDbContext.SaveChangesAsync();
 
-            var channelDto = ChannelMapper.ToDto(channel);
-            _logger.LogDebug("Message stored (Id={MessageId}) in channel {ChannelId}.", msg.Id, channel.Id);
-
-            return new SendMessageResponse(channelDto);
+            // ChannelDto => ChannelMapper.ToDto
+            var dto = ChannelMapper.ToDto(channel);
+            return new SendMessageResponse(dto);
         }
     }
 }

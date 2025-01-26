@@ -186,7 +186,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = "http://localhost:5115/Chat/users";
+                    var url = "http://localhost:5232/Auth/users";
                     var jsonContent = new StringContent(
                         JsonConvert.SerializeObject(request),
                         Encoding.UTF8,

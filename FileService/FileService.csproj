@@ -11,6 +11,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Dtos\**" />
+    <Content Remove="Dtos\**" />
+    <EmbeddedResource Remove="Dtos\**" />
+    <None Remove="Dtos\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AutoMapper" Version="13.0.1" />
     <PackageReference Include="BsDiff" Version="1.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
@@ -28,7 +35,6 @@
   <ItemGroup>
     <Folder Include="data\" />
     <Folder Include="Models\" />
-    <Folder Include="Dtos\" />
   </ItemGroup>
 
   <ItemGroup>
