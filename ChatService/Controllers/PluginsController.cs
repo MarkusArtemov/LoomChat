@@ -17,8 +17,7 @@ namespace De.Hsfl.LoomChat.Chat.Controllers
         }
 
         /// <summary>
-        /// Gibt die PollPlugin.dll als Byte-Stream zurück,
-        /// ohne sie serverseitig auf ihr PublicKeyToken zu prüfen.
+        /// Returns the PollPlugin DLL as a byte stream.
         /// </summary>
         [HttpGet("pollplugin")]
         public IActionResult GetPollPlugin()
@@ -31,10 +30,30 @@ namespace De.Hsfl.LoomChat.Chat.Controllers
                 return NotFound("Plugin DLL not found.");
             }
 
-            _logger.LogInformation("Sending PollPlugin.dll to client from {Path}", pluginPath);
+            _logger.LogInformation("Sending PollPlugin.dll from {Path}", pluginPath);
             var pluginBytes = System.IO.File.ReadAllBytes(pluginPath);
-
             var fileResult = File(pluginBytes, "application/octet-stream", "De.Hsfl.LoomChat.PollPlugin.dll");
+            fileResult.EnableRangeProcessing = true;
+            return fileResult;
+        }
+
+        /// <summary>
+        /// Returns the BlackListPlugin DLL as a byte stream.
+        /// </summary>
+        [HttpGet("blacklistplugin")]
+        public IActionResult GetBlackListPlugin()
+        {
+            var pluginPath = Path.Combine(_env.ContentRootPath, "Plugins", "De.Hsfl.LoomChat.BlackListPlugin.dll");
+
+            if (!System.IO.File.Exists(pluginPath))
+            {
+                _logger.LogWarning("BlackListPlugin.dll not found at {Path}", pluginPath);
+                return NotFound("Plugin DLL not found.");
+            }
+
+            _logger.LogInformation("Sending BlackListPlugin.dll from {Path}", pluginPath);
+            var pluginBytes = System.IO.File.ReadAllBytes(pluginPath);
+            var fileResult = File(pluginBytes, "application/octet-stream", "De.Hsfl.LoomChat.BlackListPlugin.dll");
             fileResult.EnableRangeProcessing = true;
             return fileResult;
         }

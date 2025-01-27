@@ -6,6 +6,21 @@
     <Nullable>enable</Nullable>
     <AssemblyName>De.Hsfl.LoomChat.BlackListPlugin</AssemblyName>
     <RootNamespace>De.Hsfl.LoomChat.BlackListPlugin</RootNamespace>
-  </PropertyGroup>
+  
+
+ <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\keys\MyPluginKey.snk</AssemblyOriginatorKeyFile>
+    </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CommonLibrary\CommonLibrary.csproj" />
+  </ItemGroup>
+
+ <ItemGroup>
+    <None Include="..\Keys\MyPluginKey.snk">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </None>
+  </ItemGroup>
 
 </Project>

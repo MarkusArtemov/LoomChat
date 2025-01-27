@@ -1,15 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace De.Hsfl.LoomChat.Common.Contracts
 {
     public interface IPollPlugin : IChatPlugin
     {
-        event Action<string, List<string>> PollCreatedEvent;
-        event Action<string, Dictionary<string, int>> PollUpdatedEvent;
-        event Action<string> PollClosedEvent;
-        event Action<string> PollDeletedEvent;
+        // Poll-spezifische Events:
+        event System.Action<string, List<string>> PollCreatedEvent;
+        event System.Action<string, System.Collections.Generic.Dictionary<string, int>> PollUpdatedEvent;
+        event System.Action<string> PollClosedEvent;
+        event System.Action<string> PollDeletedEvent;
 
         Task CreatePoll(int channelId, string title, List<string> options);
         Task Vote(string title, string option);

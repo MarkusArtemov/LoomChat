@@ -9,6 +9,6 @@ namespace De.Hsfl.LoomChat.Common.Contracts
     public interface IChatPlugin
     {
         string Name { get; }
-        void Initialize();
+        Task Initialize();
     }
 }
