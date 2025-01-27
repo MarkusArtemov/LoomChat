@@ -6,12 +6,12 @@
       Title="MainView"
       Loaded="MainViewLoaded">
 
-    <!-- 1) DataContext -->
+    <!-- DataContext -->
     <Page.DataContext>
         <local:MainViewModel />
     </Page.DataContext>
 
-    <!-- 2) Resources -->
+    <!-- Resources -->
     <Page.Resources>
 
         <!-- BoolToVisibilityConverter -->
@@ -28,7 +28,7 @@
                     <TextBlock Text="Ich"
                                FontWeight="Bold"
                                Margin="0,0,0,5"/>
-                    <!-- Text -->
+                    <!-- Message text -->
                     <TextBlock Text="{Binding Content}" />
                     <!-- Time -->
                     <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}"
@@ -72,7 +72,7 @@
                                Margin="0,0,0,5"
                                FontWeight="Bold"/>
 
-                    <!-- Voting Panel -->
+                    <!-- Voting panel -->
                     <StackPanel x:Name="VotingPanel">
                         <ListBox x:Name="OptionList"
                                  ItemsSource="{Binding PollOptions}"
@@ -97,7 +97,7 @@
                                 CommandParameter="{Binding SelectedItem, ElementName=OptionList}" />
                     </StackPanel>
 
-                    <!-- Results Panel -->
+                    <!-- Results panel -->
                     <StackPanel x:Name="ResultsPanel" Margin="0,5,0,0" Visibility="Collapsed">
                         <ItemsControl ItemsSource="{Binding PollOptions}">
                             <ItemsControl.ItemTemplate>
@@ -122,7 +122,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- Triggers: Hide voting panel if user voted or poll is closed -->
+            <!-- Triggers: hide voting panel if user voted or poll is closed -->
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding HasUserVoted}" Value="True">
                     <Setter TargetName="VotingPanel" Property="Visibility" Value="Collapsed" />
@@ -143,7 +143,7 @@
             PollMessageTemplate="{StaticResource PollMessageTemplate}" />
     </Page.Resources>
 
-    <!-- 3) Main Layout -->
+    <!-- Main Layout -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="15*"/>
@@ -154,7 +154,7 @@
             <ColumnDefinition Width="80*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- HEADER -->
+        <!-- Header -->
         <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="10" Background="#E8E8E8">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -169,26 +169,24 @@
 
                 <StackPanel Orientation="Horizontal"
                             Grid.Column="1"
-                            VerticalAlignment="Center">
-                    <!-- Load Poll Plugin Button -->
-                    <Button Content="Load Poll Plugin"
-                            Command="{Binding LoadPollPluginCommand}"
-                            Width="130"
-                            Height="30"
-                            Margin="0,0,10,0"/>
-
-                    <!-- Load BlackList Plugin Button -->
-                    <Button Content="Load BlackList Plugin"
-                            Command="{Binding LoadBlackListPluginCommand}"
+                            VerticalAlignment="Center"
+                            Margin="0,0,10,0">
+                    <!-- Button: Toggle Poll Plugin -->
+                    <Button Content="{Binding PollPluginButtonContent}"
+                            Command="{Binding TogglePollPluginCommand}"
                             Width="150"
-                            Height="30"
                             Margin="0,0,10,0"/>
 
-                    <!-- Logout Button -->
+                    <!-- Button: Toggle BlackList Plugin -->
+                    <Button Content="{Binding BlackListPluginButtonContent}"
+                            Command="{Binding ToggleBlackListPluginCommand}"
+                            Width="170"
+                            Margin="0,0,10,0"/>
+
+                    <!-- Logout -->
                     <Button Content="Logout"
                             Command="{Binding LogoutCommand}"
-                            Width="100"
-                            Height="30"/>
+                            Width="100"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -203,19 +201,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Direct Messages -->
-                <GroupBox Grid.Row="0" Header="Direktnachrichten" Margin="0,0,0,10">
-                    <ListView ItemsSource="{Binding DirectMessages}"
-                              ScrollViewer.VerticalScrollBarVisibility="Auto"
-                              MouseDoubleClick="ChannelListViewMouseDoubleClick">
-                        <ListView.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding Name}" FontSize="14"/>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-                </GroupBox>
-
+                <!-- Create Channel Button -->
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,5">
                     <Button Content="Channel erstellen"
                             Command="{Binding OpenPopupCommand}"
@@ -301,7 +287,7 @@
                     </Grid>
                 </TabItem>
 
-                <!-- Tab: Files -->
+                <!-- Tab: Dateien -->
                 <TabItem Header="Dateien">
                     <Grid>
                         <TextBlock Text="Bitte wähle einen Chat aus."

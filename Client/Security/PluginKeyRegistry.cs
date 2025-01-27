@@ -3,8 +3,7 @@
 namespace De.Hsfl.LoomChat.Client.Security
 {
     /// <summary>
-    /// Holds the single known PublicKeyToken for all plugins
-    /// signed with the same .snk file.
+    /// Holds the single known PublicKeyToken for all plugins.
     /// </summary>
     public static class PluginKeyRegistry
     {
