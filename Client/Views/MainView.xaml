@@ -16,8 +16,6 @@
         <!-- A) BoolToVisibilityConverter -->
         <converter:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
 
-        <!-- B) DataTemplates für Nachrichten -->
-
         <!-- 1) Meine Textnachricht (rechte Bubble) -->
         <DataTemplate x:Key="MyTextMessageTemplate">
             <Border Background="#DCF8C6"
@@ -29,7 +27,7 @@
                     <TextBlock Text="Ich"
                                FontWeight="Bold"
                                Margin="0,0,0,5"/>
-                    <!-- Textinhalt -->
+                    <!-- Text -->
                     <TextBlock Text="{Binding Content}" />
                     <!-- Uhrzeit -->
                     <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}"
@@ -47,13 +45,10 @@
                     CornerRadius="10"
                     HorizontalAlignment="Left">
                 <StackPanel>
-                    <!-- SenderUserId oder ggf. Username -->
                     <TextBlock Text="{Binding SenderUserId}"
                                FontWeight="Bold"
                                Margin="0,0,0,5"/>
-                    <!-- Textinhalt -->
                     <TextBlock Text="{Binding Content}" />
-                    <!-- Uhrzeit -->
                     <TextBlock Text="{Binding SentAt, StringFormat=HH:mm:ss}"
                                FontSize="10"
                                HorizontalAlignment="Right"/>
@@ -61,7 +56,7 @@
             </Border>
         </DataTemplate>
 
-        <!-- 3) PollMessageTemplate (Umfragen) -->
+        <!-- 3) Umfrage (Poll) -->
         <DataTemplate x:Key="PollMessageTemplate">
             <Border Background="#FFE4B5"
                     Padding="10"
@@ -76,24 +71,24 @@
                                Margin="0,0,0,5"
                                FontWeight="Bold"/>
 
-                    <!-- Abstimm-Bereich (nur sichtbar, solange HasUserVoted=false und IsClosed=false) -->
+                    <!-- Abstimm-Bereich (VotingPanel) -->
                     <StackPanel x:Name="VotingPanel">
-                        <!-- Liste der Optionen: RadioButtons in einer ListBox (Single Selection) -->
                         <ListBox x:Name="OptionList"
                                  ItemsSource="{Binding PollOptions}"
                                  SelectionMode="Single"
                                  Margin="0,5,0,0">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <!-- Jeder Eintrag wird als RadioButton dargestellt -->
+                                    <!-- Jeder Eintrag als RadioButton -->
                                     <RadioButton Content="{Binding}"
                                                  Margin="5,0"
-                                                 IsChecked="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem}, Path=IsSelected, Mode=TwoWay}" />
+                                                 IsChecked="{Binding RelativeSource={RelativeSource AncestorType=ListBoxItem},
+                                                                     Path=IsSelected,
+                                                                     Mode=TwoWay}" />
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
 
-                        <!-- Vote-Button: Verweis auf den Page-DataContext -->
                         <Button Content="Vote"
                                 Margin="0,5,0,0"
                                 Command="{Binding DataContext.VotePollCommand,
@@ -101,10 +96,8 @@
                                 CommandParameter="{Binding SelectedItem, ElementName=OptionList}" />
                     </StackPanel>
 
-                    <!-- Ergebnis-Anzeige (z.B. "Option (x Votes)") -->
+                    <!-- Ergebnis-Anzeige -->
                     <StackPanel x:Name="ResultsPanel" Margin="0,5,0,0">
-                        <!-- Hier werden die bereits formatierten Strings angezeigt:
-                             "Option 1 (2 Votes)", etc. -->
                         <ItemsControl ItemsSource="{Binding PollOptions}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -113,7 +106,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <!-- Falls die Umfrage geschlossen ist, eine Info -->
+                        <!-- Falls die Umfrage geschlossen ist, kleine Info -->
                         <TextBlock Text="Diese Umfrage ist geschlossen."
                                    Foreground="Red"
                                    Margin="5,5,0,0"
@@ -129,17 +122,15 @@
                 </StackPanel>
             </Border>
 
-            <!-- DataTemplate-Triggers: 
-                 Steuern Sichtbarkeit VotingPanel vs. ResultsPanel 
-                 anhand von HasUserVoted und IsClosed -->
+            <!-- Trigger: Wenn user bereits voted oder poll geschlossen => Results sichtbar -->
             <DataTemplate.Triggers>
-                <!-- User hat bereits abgestimmt => Voting ausblenden, Ergebnisse einblenden -->
+                <!-- User hat bereits abgestimmt => VotingPanel verstecken, Results anzeigen -->
                 <DataTrigger Binding="{Binding HasUserVoted}" Value="True">
                     <Setter TargetName="VotingPanel" Property="Visibility" Value="Collapsed" />
                     <Setter TargetName="ResultsPanel" Property="Visibility" Value="Visible" />
                 </DataTrigger>
 
-                <!-- Poll ist geschlossen => Voting ausblenden, Ergebnisse einblenden -->
+                <!-- Poll ist geschlossen => VotingPanel verstecken, Results anzeigen -->
                 <DataTrigger Binding="{Binding IsClosed}" Value="True">
                     <Setter TargetName="VotingPanel" Property="Visibility" Value="Collapsed" />
                     <Setter TargetName="ResultsPanel" Property="Visibility" Value="Visible" />
@@ -166,18 +157,14 @@
             <ColumnDefinition Width="80*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Header / Titel -->
-        <Border Grid.Row="0"
-                Grid.ColumnSpan="2"
-                Padding="10"
-                Background="#E8E8E8">
+        <!-- HEADER -->
+        <Border Grid.Row="0" Grid.ColumnSpan="2" Padding="10" Background="#E8E8E8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Titel -->
                 <TextBlock Text="LoomChat"
                            FontSize="24"
                            FontWeight="Bold"
@@ -186,14 +173,11 @@
                 <StackPanel Orientation="Horizontal"
                             Grid.Column="1"
                             VerticalAlignment="Center">
-                    <!-- Button zum Laden des Plugins -->
                     <Button Content="Load Poll Plugin"
                             Command="{Binding LoadPollPluginCommand}"
                             Width="130"
                             Height="30"
                             Margin="0,0,10,0"/>
-
-                    <!-- Logout -->
                     <Button Content="Logout"
                             Command="{Binding LogoutCommand}"
                             Width="100"
@@ -202,11 +186,8 @@
             </Grid>
         </Border>
 
-        <!-- Linke Spalte (Channels, User etc.) -->
-        <Border Grid.Row="1"
-                Grid.Column="0"
-                Background="#F4F4F4"
-                Padding="10">
+        <!-- Linke Spalte: Channels, Direktnachrichten, User -->
+        <Border Grid.Row="1" Grid.Column="0" Background="#F4F4F4" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*"/>
@@ -215,7 +196,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <!-- Direktnachrichten -->
+                <!-- DMs -->
                 <GroupBox Grid.Row="0" Header="Direktnachrichten" Margin="0,0,0,10">
                     <ListView ItemsSource="{Binding DirectMessages}"
                               ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -228,7 +209,6 @@
                     </ListView>
                 </GroupBox>
 
-                <!-- Button: Channel erstellen -->
                 <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,5">
                     <Button Content="Channel erstellen"
                             Command="{Binding OpenPopupCommand}"
@@ -264,13 +244,10 @@
             </Grid>
         </Border>
 
-        <!-- Rechte Spalte: Tabs (Chat / Dateien) -->
-        <Border Grid.Row="1"
-                Grid.Column="1"
-                Padding="10"
-                Background="#F8F8F8">
+        <!-- Rechte Spalte: Tabs -->
+        <Border Grid.Row="1" Grid.Column="1" Padding="10" Background="#F8F8F8">
             <TabControl>
-                <!-- TabItem: Chat -->
+                <!-- Tab: Chat -->
                 <TabItem Header="Chat">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -307,7 +284,7 @@
                                     Width="80"
                                     Margin="0,0,10,0" />
 
-                            <!-- "Umfrage erstellen" wird nur sichtbar, wenn Plugin geladen -->
+                            <!-- "Umfrage erstellen" nur sichtbar, wenn Plugin geladen -->
                             <Button Content="Umfrage erstellen"
                                     Command="{Binding OpenPollPopupCommand}"
                                     Width="120"
@@ -317,7 +294,7 @@
                     </Grid>
                 </TabItem>
 
-                <!-- TabItem: Dateien -->
+                <!-- Tab: Dateien -->
                 <TabItem Header="Dateien">
                     <Grid>
                         <TextBlock Text="Bitte wähle einen Chat aus."
@@ -333,7 +310,7 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="2*"/>
-                                <RowDefinition Height="1*"/>
+                                <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
 
                             <!-- Datei-Buttons -->
@@ -362,7 +339,7 @@
                                           ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListView.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding Name}"/>
+                                            <TextBlock Text="{Binding Name}" />
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
                                 </ListView>
@@ -375,12 +352,11 @@
                                           ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListView.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="Version: ">
-                                                <TextBlock.Inlines>
-                                                    <Run Text="{Binding VersionNumber, Mode=OneWay}" />
-                                                    <Run Text=" | " />
-                                                    <Run Text="{Binding CreatedAt, Mode=OneWay, StringFormat=yyyy-MM-dd HH:mm:ss}" />
-                                                </TextBlock.Inlines>
+                                            <TextBlock>
+                                                <Run Text="Version: "/>
+                                                <Run Text="{Binding VersionNumber}"/>
+                                                <Run Text=" | "/>
+                                                <Run Text="{Binding CreatedAt, StringFormat=yyyy-MM-dd HH:mm:ss}" />
                                             </TextBlock>
                                         </DataTemplate>
                                     </ListView.ItemTemplate>
@@ -438,13 +414,11 @@
                                FontWeight="Bold"
                                Margin="0,0,0,10"/>
 
-                    <!-- Titel -->
                     <TextBlock Text="Titel:"/>
                     <TextBox Text="{Binding PollTitle}"
                              Width="300"
                              Margin="0,0,0,10"/>
 
-                    <!-- Optionen -->
                     <TextBlock Text="Antwortoptionen:"/>
                     <ListBox ItemsSource="{Binding PollOptions}"
                              Height="100"
@@ -456,7 +430,6 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <!-- Zeile zum Hinzufügen einer Option -->
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                         <TextBox Text="{Binding NewOptionText}"
                                  Width="200"
@@ -465,7 +438,6 @@
                                 Command="{Binding AddPollOptionCommand}"/>
                     </StackPanel>
 
-                    <!-- Action-Buttons -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Content="Abbrechen"
                                 Command="{Binding ClosePollPopupCommand}"

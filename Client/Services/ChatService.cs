@@ -17,12 +17,21 @@ namespace De.Hsfl.LoomChat.Client.Services
         private HubConnection _hubConnection;
         private string _jwtToken;
 
+        // ========== CHAT-EVENTS ==========
         // Fired when a new text message arrives
         public event Action<int, int, string, string, DateTime> OnMessageReceived;
 
         // Fired when the server sends the entire channel history as List<ChatMessageDto>
         public event Action<int, List<ChatMessageDto>> OnChannelHistoryReceived;
 
+        // ========== POLL-EVENTS ==========
+        public event Action<string, List<string>> OnPollCreated;
+        public event Action<string, Dictionary<string, int>> OnPollUpdated;
+        public event Action<string> OnPollClosed;
+        public event Action<string> OnPollDeleted;
+        public event Action<string> OnPollError;
+
+        // ========== INITIALISIERUNG ==========
         public async Task InitializeSignalRAsync(string jwtToken)
         {
             _jwtToken = jwtToken;
@@ -53,6 +62,48 @@ namespace De.Hsfl.LoomChat.Client.Services
                 }
             );
 
+            // ========== POLL-EVENTS ==========
+            // Broadcast vom Server => an diese Methoden gebunden
+            _hubConnection.On<string, List<string>>(
+                "PollCreated",
+                (title, options) =>
+                {
+                    OnPollCreated?.Invoke(title, options);
+                }
+            );
+
+            _hubConnection.On<string, Dictionary<string, int>>(
+                "PollUpdated",
+                (title, results) =>
+                {
+                    OnPollUpdated?.Invoke(title, results);
+                }
+            );
+
+            _hubConnection.On<string>(
+                "PollClosed",
+                (title) =>
+                {
+                    OnPollClosed?.Invoke(title);
+                }
+            );
+
+            _hubConnection.On<string>(
+                "PollDeleted",
+                (title) =>
+                {
+                    OnPollDeleted?.Invoke(title);
+                }
+            );
+
+            _hubConnection.On<string>(
+                "PollError",
+                (errorMsg) =>
+                {
+                    OnPollError?.Invoke(errorMsg);
+                }
+            );
+
             await _hubConnection.StartAsync();
         }
 
@@ -77,6 +128,8 @@ namespace De.Hsfl.LoomChat.Client.Services
             return client;
         }
 
+        // ========== SIGNALR: CHANNEL JOIN / MESSAGES ==========
+
         // SignalR: join channel
         public async Task JoinChannel(int channelId)
         {
@@ -93,7 +146,33 @@ namespace De.Hsfl.LoomChat.Client.Services
             await _hubConnection.InvokeAsync("SendMessageToChannel", req);
         }
 
-        // =============== REST PART =================
+        // ========== SIGNALR: POLL-METHODEN ==========
+
+        public async Task CreatePoll(int channelId, string title, List<string> options)
+        {
+            if (_hubConnection == null) return;
+            await _hubConnection.InvokeAsync("CreatePoll", channelId, title, options);
+        }
+
+        public async Task VotePoll(string title, string option)
+        {
+            if (_hubConnection == null) return;
+            await _hubConnection.InvokeAsync("Vote", title, option);
+        }
+
+        public async Task ClosePoll(string title)
+        {
+            if (_hubConnection == null) return;
+            await _hubConnection.InvokeAsync("ClosePoll", title);
+        }
+
+        public async Task DeletePoll(string title)
+        {
+            if (_hubConnection == null) return;
+            await _hubConnection.InvokeAsync("DeletePoll", title);
+        }
+
+        // ========== REST-PART (zum Laden von Channels/Users/DMs) ==========
 
         public async Task<List<ChannelDto>> LoadChannels(GetChannelsRequest request)
         {

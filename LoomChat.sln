@@ -14,6 +14,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Client", "Client\Client.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PollPlugin", "PollPlugin\PollPlugin.csproj", "{C2996018-3B90-49D7-9F1C-C8FDD5F39291}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BlackListPlugin", "BlackListPlugin\BlackListPlugin.csproj", "{0EA5EA39-12BA-49D1-9C40-DF1A01D67761}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +46,10 @@ Global
 		{C2996018-3B90-49D7-9F1C-C8FDD5F39291}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C2996018-3B90-49D7-9F1C-C8FDD5F39291}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C2996018-3B90-49D7-9F1C-C8FDD5F39291}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0EA5EA39-12BA-49D1-9C40-DF1A01D67761}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0EA5EA39-12BA-49D1-9C40-DF1A01D67761}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0EA5EA39-12BA-49D1-9C40-DF1A01D67761}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0EA5EA39-12BA-49D1-9C40-DF1A01D67761}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

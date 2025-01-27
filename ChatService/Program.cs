@@ -1,6 +1,4 @@
-using System;
 using System.Text;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.SignalR;
@@ -18,7 +16,7 @@ using De.Hsfl.LoomChat.Chat.Mappings;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Serilog konfigurieren (Log-Ausgabe)
+// Serilog konfigurieren
 builder.Host.UseSerilog((context, loggerConfig) =>
 {
     loggerConfig
@@ -26,21 +24,21 @@ builder.Host.UseSerilog((context, loggerConfig) =>
         .WriteTo.Console();
 });
 
-// Connection-String laden (z. B. PostgreSQL)
+// Connection-String (z. B. PostgreSQL)
 var connString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ChatDbContext>(options =>
 {
     options.UseNpgsql(connString);
 });
 
-// AutoMapper-Profil einscannen
+// Automapper
 builder.Services.AddAutoMapper(typeof(ChatMappingProfile).Assembly);
 
-// Registriere deine Services
+// Registriere Services
 builder.Services.AddScoped<ChatService>();
-builder.Services.AddScoped<PollService>(); 
+builder.Services.AddScoped<PollService>();
 
-
+// JWT-Auth
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -70,23 +68,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// REST + SignalR
-builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 builder.Services.AddSignalR();
-builder.Services.AddSwaggerGen(); // optional für Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Automatisch EF-Migrationen ausführen (optional)
+// Migrationen automatisch ausführen (optional)
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
     db.Database.Migrate();
 }
 
-// Development-spezifische Features
+// Development
 if (app.Environment.IsDevelopment())
 {
     app.UseDeveloperExceptionPage();
@@ -94,18 +91,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// app.UseHttpsRedirection();
-
-// Auth & Authorization in der Middleware-Pipeline
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Controllers freischalten
 app.MapControllers();
 
-// SignalR-Hubs
+// Nur noch **einen** Hub verwenden: /chatHub
 app.MapHub<ChatHub>("/chatHub");
-app.MapHub<PollHub>("/pollHub");  
 
-// Start der Anwendung
+// Fertig
 app.Run();

@@ -1,24 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using De.Hsfl.LoomChat.Chat.Persistence;
 using De.Hsfl.LoomChat.Common.Dtos;
 using De.Hsfl.LoomChat.Common.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace De.Hsfl.LoomChat.Chat.Services
 {
     /// <summary>
-    /// Manages channels, messages, and memberships.
+    /// Verwaltet Channels, Nachrichten (inkl. PollMessages) und Mitgliedschaften.
     /// </summary>
     public class ChatService
     {
         private readonly ChatDbContext _chatDbContext;
-        private readonly PollService _pollService;   // NEU: wir brauchen den PollService
+        private readonly PollService _pollService;
         private readonly ILogger<ChatService> _logger;
 
         public ChatService(ChatDbContext chatDbContext,
@@ -30,19 +28,9 @@ namespace De.Hsfl.LoomChat.Chat.Services
             _logger = logger;
         }
 
-        private HttpClient CreateHttpClientWithAuth()
-        {
-            // Platzhalter: 
-            var token = "DEIN_AKTUELLES_JWT";
-            var client = new HttpClient();
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                client.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
-            }
-            return client;
-        }
-
+        /// <summary>
+        /// Lädt alle regulären (nicht-DM) Channels.
+        /// </summary>
         public async Task<GetChannelsResponse> GetAllChannels(GetChannelsRequest request)
         {
             _logger.LogInformation("GetAllChannels called. UserId={UserId}", request.UserId);
@@ -57,13 +45,19 @@ namespace De.Hsfl.LoomChat.Chat.Services
             return new GetChannelsResponse(list);
         }
 
+        /// <summary>
+        /// Lädt (Dummy) alle User - (in deinem Code ggf. anders implementiert).
+        /// </summary>
         public async Task<GetUsersResponse> GetAllUsers(GetUsersRequest request)
         {
             _logger.LogInformation("GetAllUsers called (dummy).");
-            // Dummy: leere Liste
-            return await Task.FromResult(new GetUsersResponse(new List<Common.Models.User>()));
+            // Dummy: leere Liste oder deine echte User-Abfrage
+            return await Task.FromResult(new GetUsersResponse(new List<User>()));
         }
 
+        /// <summary>
+        /// Lädt alle DM-Channels des Users.
+        /// </summary>
         public async Task<GetDirectChannelsResponse> GetAllDirectChannels(GetDirectChannelsRequest request)
         {
             _logger.LogInformation("GetAllDirectChannels called. UserId={UserId}", request.UserId);
@@ -78,6 +72,9 @@ namespace De.Hsfl.LoomChat.Chat.Services
             return new GetDirectChannelsResponse(dtos);
         }
 
+        /// <summary>
+        /// Erzeugt einen neuen Channel (kein DM).
+        /// </summary>
         public async Task<CreateChannelResponse> CreateChannelAsync(CreateChannelRequest request)
         {
             _logger.LogInformation("CreateChannelAsync. UserId={UserId}, ChannelName={ChannelName}",
@@ -103,6 +100,9 @@ namespace De.Hsfl.LoomChat.Chat.Services
             return new CreateChannelResponse(ChannelMapper.ToDto(channel));
         }
 
+        /// <summary>
+        /// Sendet eine ganz normale Text-Message in einen Channel.
+        /// </summary>
         public async Task<ChatMessageDto> SendMessageAsync(int channelId, int senderUserId, string content)
         {
             _logger.LogInformation("SendMessageAsync. Channel={ChannelId}, User={UserId}, content={Content}",
@@ -131,8 +131,8 @@ namespace De.Hsfl.LoomChat.Chat.Services
         }
 
         /// <summary>
-        /// NEU: Lädt alle Nachrichten (Text + Poll) für channelId
-        ///      und prüft pro Poll, ob currentUserId schon gevotet hat.
+        /// Lädt alle Nachrichten (TextMessages + PollMessages) eines Channels
+        /// und versieht Polls pro User mit HasUserVoted.
         /// </summary>
         public async Task<List<ChatMessageDto>> GetMessagesForChannelAsync(int channelId, int currentUserId)
         {
@@ -162,6 +162,7 @@ namespace De.Hsfl.LoomChat.Chat.Services
                 }
                 else if (msg is PollMessage pm)
                 {
+                    // Prüfe, ob der User schon für diese PollId gevotet hat
                     bool userVoted = await _pollService.HasUserVotedAsync(pm.PollId, currentUserId);
 
                     result.Add(new ChatMessageDto
@@ -196,6 +197,9 @@ namespace De.Hsfl.LoomChat.Chat.Services
             return result;
         }
 
+        /// <summary>
+        /// Archiviert einen Channel für einen bestimmten User.
+        /// </summary>
         public async Task<bool> ArchiveChannelForUserAsync(int channelId, int userId)
         {
             var membership = await _chatDbContext.ChannelMembers
@@ -207,6 +211,9 @@ namespace De.Hsfl.LoomChat.Chat.Services
             return true;
         }
 
+        /// <summary>
+        /// Entfernt den User aus dem Channel (ChannelMember).
+        /// </summary>
         public async Task<bool> RemoveUserFromChannelAsync(int channelId, int userId)
         {
             var membership = await _chatDbContext.ChannelMembers
@@ -218,6 +225,10 @@ namespace De.Hsfl.LoomChat.Chat.Services
             return true;
         }
 
+        /// <summary>
+        /// Öffnet oder erstellt (falls nicht existiert) einen Direktnachrichten-Channel
+        /// zwischen OwnId und OtherId.
+        /// </summary>
         public async Task<OpenChatWithUserResponse> OpenChatWithUser(OpenChatWithUserRequest request)
         {
             var existing = await _chatDbContext.Channels
@@ -249,6 +260,9 @@ namespace De.Hsfl.LoomChat.Chat.Services
             return new OpenChatWithUserResponse(ChannelMapper.ToDto(newChannel));
         }
 
+        /// <summary>
+        /// Falls du (zusätzlich) eine alte REST-Variante hast.
+        /// </summary>
         public async Task<SendMessageResponse> SendMessage(SendMessageRequest request)
         {
             var channel = await _chatDbContext.Channels
@@ -273,6 +287,9 @@ namespace De.Hsfl.LoomChat.Chat.Services
             return new SendMessageResponse(dto);
         }
 
+        /// <summary>
+        /// Erstellt eine PollMessage (ChatMessage vom Typ Poll).
+        /// </summary>
         public async Task CreatePollMessageAsync(int channelId, int senderUserId, int pollId)
         {
             var pollMsg = new PollMessage
@@ -284,6 +301,16 @@ namespace De.Hsfl.LoomChat.Chat.Services
             };
             _chatDbContext.ChatMessages.Add(pollMsg);
             await _chatDbContext.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Gibt das Poll-Objekt zur pollId zurück (inkl. Channel-Info), 
+        /// um in ChatHub das ChannelId zu kennen.
+        /// </summary>
+        public async Task<Poll> GetPollByIdAsync(int pollId)
+        {
+            return await _chatDbContext.Polls
+                .FirstOrDefaultAsync(p => p.Id == pollId);
         }
     }
 }
