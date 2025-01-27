@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Newtonsoft.Json;
 using De.Hsfl.LoomChat.Common.Dtos;
 using De.Hsfl.LoomChat.Common.Models;
+using Microsoft.AspNetCore.Http.Connections;
+using De.Hsfl.LoomChat.Common.dtos;
 
 namespace De.Hsfl.LoomChat.Client.Services
 {
@@ -35,9 +37,9 @@ namespace De.Hsfl.LoomChat.Client.Services
         public async Task InitializeSignalRAsync(string jwtToken)
         {
             _jwtToken = jwtToken;
-
+            int port = await GetChatServicePort();
             _hubConnection = new HubConnectionBuilder()
-                .WithUrl("http://localhost:5115/chatHub", options =>
+                .WithUrl($"http://localhost:{port}/chatHub", options =>
                 {
                     // JWT
                     options.AccessTokenProvider = () => Task.FromResult(jwtToken);
@@ -180,7 +182,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = "http://localhost:5115/Chat/channels";
+                    var url = "http://localhost/chat/Chat/channels";
                     var jsonContent = new StringContent(
                         JsonConvert.SerializeObject(request),
                         Encoding.UTF8,
@@ -207,7 +209,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = "http://localhost:5115/Chat/dms";
+                    var url = "http://localhost/chat/Chat/dms";
                     var jsonContent = new StringContent(
                         JsonConvert.SerializeObject(request),
                         Encoding.UTF8,
@@ -261,7 +263,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = "http://localhost:5115/Chat/openDm";
+                    var url = "http://localhost/chat/Chat/openDm";
                     var jsonContent = new StringContent(
                         JsonConvert.SerializeObject(request),
                         Encoding.UTF8,
@@ -288,7 +290,7 @@ namespace De.Hsfl.LoomChat.Client.Services
             {
                 try
                 {
-                    var url = "http://localhost:5115/Chat/createChannel";
+                    var url = "http://localhost/chat/Chat/createChannel";
                     var jsonContent = new StringContent(
                         JsonConvert.SerializeObject(request),
                         Encoding.UTF8,

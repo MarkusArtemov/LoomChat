@@ -13,6 +13,7 @@ using De.Hsfl.LoomChat.Chat.Persistence;
 using De.Hsfl.LoomChat.Chat.Services;
 using De.Hsfl.LoomChat.Chat.Hubs;
 using De.Hsfl.LoomChat.Chat.Mappings;
+using De.Hsfl.LoomChat.Common.dtos;
 
 var builder = WebApplication.CreateBuilder(args);
 
