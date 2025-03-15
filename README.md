@@ -1,6 +1,4 @@
-# Verteilte Systeme – Hausarbeit
-
-**Projektgruppe:** Markus Artemov und Matz Schultz
+# Verteilte Systeme - Chat Anwendung
 
 ## Voraussetzungen
 
